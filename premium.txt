@@ -1,0 +1,40 @@
+USULAN FITUR PREMIUM NVIDIA LITE
+
+Status: Ide untuk ditinjau; belum diimplementasikan.
+Harga yang dipertimbangkan: Rp10.000 sekali bayar (bukan langganan).
+
+Tujuan
+Memberi manfaat nyata bagi pengguna yang sering berpindah game, tanpa
+mengunci fitur dasar atau membuat aplikasi terasa berat.
+
+Fitur Premium yang disarankan: Profil Game Otomatis
+- Simpan beberapa profil pengaturan untuk game yang berbeda.
+- Atur preset filter warna dan intensitasnya untuk setiap game.
+- Atur preferensi overlay per game, lalu pulihkan pengaturan saat game
+  tersebut dibuka.
+- Kelola profil secara manual: tambah, ubah nama, hapus, ekspor, dan impor.
+- Tetap sediakan pilihan untuk menonaktifkan profil otomatis.
+
+Alasan memilih fitur ini
+- Menambah kenyamanan yang relevan dengan aplikasi overlay game.
+- Tidak perlu layanan cloud, akun, atau koneksi internet.
+- Bisa dirancang agar ringan: simpan konfigurasi lokal dan terapkan hanya
+  saat game yang cocok sedang berjalan.
+- Lebih mudah dipahami nilainya daripada sekadar memberi label "Premium".
+
+Tetap gratis
+- Membuka dan menutup overlay.
+- Screenshot dan akses ke hasil screenshot.
+- Pengaturan dasar yang sudah tersedia, termasuk hotkey dan filter dasar.
+- Jangan mengunci data pengguna atau fitur dasar di balik pembayaran.
+
+Catatan sebelum dijual
+- Harga Rp10.000 adalah usulan; tentukan apakah pembayaran berlaku per
+  perangkat atau untuk penggunaan pribadi sebelum implementasi.
+- Jangan tampilkan tombol beli atau mengklaim fitur sudah tersedia sebelum
+  sistem profil game selesai dibuat dan diuji.
+- Jika nanti menerima pembayaran, gunakan penyedia pembayaran yang jelas;
+  jangan menyimpan data kartu di aplikasi.
+- Spotify tidak disarankan sebagai bagian dari paket ini: pemutaran melalui
+  API memerlukan otorisasi pengguna dan tunduk pada ketentuan Spotify. Jangan
+  menjanjikan pemutaran musik tanpa token/otorisasi.

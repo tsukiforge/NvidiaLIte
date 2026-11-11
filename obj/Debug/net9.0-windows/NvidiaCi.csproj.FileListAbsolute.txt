@@ -36,3 +36,43 @@ C:\Aplikasi Win\NvidiaLIte\obj\Debug\net9.0-windows\Views\OverlayWindow.baml
 C:\Aplikasi Win\NvidiaLIte\obj\Debug\net9.0-windows\Views\ScreenFilterWindow.baml
 C:\Aplikasi Win\NvidiaLIte\obj\Debug\net9.0-windows\Views\OverlayWindow.g.cs
 C:\Aplikasi Win\NvidiaLIte\obj\Debug\net9.0-windows\Views\ScreenFilterWindow.g.cs
+C:\ZeroMix\NvidiaLIte\obj\Debug\net9.0-windows\NvidiaCi.csproj.AssemblyReference.cache
+C:\ZeroMix\NvidiaLIte\obj\Debug\net9.0-windows\Views\OverlayWindow.baml
+C:\ZeroMix\NvidiaLIte\obj\Debug\net9.0-windows\Views\ScreenFilterWindow.baml
+C:\ZeroMix\NvidiaLIte\obj\Debug\net9.0-windows\Views\ToastNotificationWindow.baml
+C:\ZeroMix\NvidiaLIte\obj\Debug\net9.0-windows\Views\OverlayWindow.g.cs
+C:\ZeroMix\NvidiaLIte\obj\Debug\net9.0-windows\Views\ScreenFilterWindow.g.cs
+C:\ZeroMix\NvidiaLIte\obj\Debug\net9.0-windows\Views\ToastNotificationWindow.g.cs
+C:\ZeroMix\NvidiaLIte\obj\Debug\net9.0-windows\App.g.cs
+C:\ZeroMix\NvidiaLIte\obj\Debug\net9.0-windows\NvidiaCi_MarkupCompile.cache
+C:\ZeroMix\NvidiaLIte\obj\Debug\net9.0-windows\NvidiaCi_MarkupCompile.lref
+C:\ZeroMix\NvidiaLIte\obj\Debug\net9.0-windows\NvidiaCi.dll
+C:\ZeroMix\NvidiaLIte\obj\Debug\net9.0-windows\refint\NvidiaCi.dll
+C:\ZeroMix\NvidiaLIte\obj\Debug\net9.0-windows\NvidiaCi.pdb
+C:\ZeroMix\NvidiaLIte\bin\Debug\net9.0-windows\Assets\.gitkeep
+C:\ZeroMix\NvidiaLIte\bin\Debug\net9.0-windows\Assets\icon.ico
+C:\ZeroMix\NvidiaLIte\bin\Debug\net9.0-windows\NvidiaCi.exe
+C:\ZeroMix\NvidiaLIte\bin\Debug\net9.0-windows\NvidiaCi.deps.json
+C:\ZeroMix\NvidiaLIte\bin\Debug\net9.0-windows\NvidiaCi.runtimeconfig.json
+C:\ZeroMix\NvidiaLIte\bin\Debug\net9.0-windows\NvidiaCi.dll
+C:\ZeroMix\NvidiaLIte\bin\Debug\net9.0-windows\NvidiaCi.pdb
+C:\ZeroMix\NvidiaLIte\bin\Debug\net9.0-windows\NAudio.dll
+C:\ZeroMix\NvidiaLIte\bin\Debug\net9.0-windows\NAudio.Asio.dll
+C:\ZeroMix\NvidiaLIte\bin\Debug\net9.0-windows\NAudio.Core.dll
+C:\ZeroMix\NvidiaLIte\bin\Debug\net9.0-windows\NAudio.Midi.dll
+C:\ZeroMix\NvidiaLIte\bin\Debug\net9.0-windows\NAudio.Wasapi.dll
+C:\ZeroMix\NvidiaLIte\bin\Debug\net9.0-windows\NAudio.WinForms.dll
+C:\ZeroMix\NvidiaLIte\bin\Debug\net9.0-windows\NAudio.WinMM.dll
+C:\ZeroMix\NvidiaLIte\bin\Debug\net9.0-windows\System.CodeDom.dll
+C:\ZeroMix\NvidiaLIte\bin\Debug\net9.0-windows\System.Management.dll
+C:\ZeroMix\NvidiaLIte\bin\Debug\net9.0-windows\runtimes\win\lib\net9.0\System.Management.dll
+C:\ZeroMix\NvidiaLIte\obj\Debug\net9.0-windows\App.baml
+C:\ZeroMix\NvidiaLIte\obj\Debug\net9.0-windows\NvidiaCi.g.resources
+C:\ZeroMix\NvidiaLIte\obj\Debug\net9.0-windows\NvidiaCi.GeneratedMSBuildEditorConfig.editorconfig
+C:\ZeroMix\NvidiaLIte\obj\Debug\net9.0-windows\NvidiaCi.AssemblyInfoInputs.cache
+C:\ZeroMix\NvidiaLIte\obj\Debug\net9.0-windows\NvidiaCi.AssemblyInfo.cs
+C:\ZeroMix\NvidiaLIte\obj\Debug\net9.0-windows\NvidiaCi.csproj.CoreCompileInputs.cache
+C:\ZeroMix\NvidiaLIte\obj\Debug\net9.0-windows\NvidiaCi.sourcelink.json
+C:\ZeroMix\NvidiaLIte\obj\Debug\net9.0-windows\NvidiaCi.csproj.Up2Date
+C:\ZeroMix\NvidiaLIte\obj\Debug\net9.0-windows\NvidiaCi.genruntimeconfig.cache
+C:\ZeroMix\NvidiaLIte\obj\Debug\net9.0-windows\ref\NvidiaCi.dll

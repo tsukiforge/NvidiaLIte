@@ -8,6 +8,8 @@ using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
+using MediaColor = System.Windows.Media.Color;
 
 namespace NvidiaCi
 {
@@ -16,33 +18,49 @@ namespace NvidiaCi
         private const int HOTKEY_OVERLAY_ID = 9000;
         private const int HOTKEY_SCREENSHOT_ID = 9001;
         private readonly GameDataManager _dataManager = new GameDataManager();
+        private readonly ScreenRecordingService _recordingService = new();
+        private readonly SpotifyControlService _spotifyService = new();
+        private List<GameItem> _games = new();
+        private bool _disposed;
 
         private bool _isChangingOverlayHotkey = false;
         private bool _isChangingScreenshotHotkey = false;
+        private bool _isInitializingSettings;
+        private bool _isSyncingControls;
+        private bool _isCustomTint;
+        private bool _isCapturing;
         private System.Windows.Input.Key _tempOverlayKey = System.Windows.Input.Key.Z;
         private System.Windows.Input.Key _tempScreenshotKey = System.Windows.Input.Key.F10;
 
-        // Filter state
         private ScreenFilterWindow? _filterWindow;
-        private System.Windows.Media.Color _selectedTintColor = System.Windows.Media.Colors.White;
+        private System.Windows.Media.Color _selectedTintColor = MediaColor.FromRgb(0xB7, 0xA1, 0xFF);
         private FilterPreset _activePreset = FilterPreset.None;
-
 
         public OverlayWindow()
         {
             InitializeComponent();
-            
+
+            if (System.Windows.Application.Current is App app)
+            {
+                if (Enum.TryParse(app.Settings.OverlayHotkey, out System.Windows.Input.Key overlayKey))
+                    _tempOverlayKey = overlayKey;
+                if (Enum.TryParse(app.Settings.ScreenshotHotkey, out System.Windows.Input.Key screenshotKey))
+                    _tempScreenshotKey = screenshotKey;
+
+                OverlayHotkeyText.Text = $"Alt + {_tempOverlayKey}";
+                ScreenshotHotkeyText.Text = _tempScreenshotKey.ToString();
+            }
+
             var handle = new WindowInteropHelper(this).EnsureHandle();
             RegisterGlobalHotkey(handle);
 
             this.Closed += OnClosed;
             PositionWindow();
-            
-            // Init filter window (invisible, always on top)
+
             _filterWindow = new ScreenFilterWindow();
             _filterWindow.Show();
+            _recordingService.RecordingStopped += OnRecordingStopped;
 
-            // Start hidden but initialized
             this.Opacity = 0;
             this.Visibility = Visibility.Collapsed;
         }
@@ -52,10 +70,10 @@ namespace NvidiaCi
             PositionWindow();
             this.Visibility = Visibility.Visible;
             this.Opacity = 1;
-            
+
             var sb = (Storyboard)this.Resources["ShowSidebar"];
             sb.Begin();
-            
+
             this.Activate();
             this.Topmost = false;
             this.Topmost = true;
@@ -68,16 +86,27 @@ namespace NvidiaCi
         {
             var sb = (Storyboard)this.Resources["HideSidebar"];
             sb.Begin();
-            
-            // Wait for animation to finish (matching duration in XAML: 0.3s)
+
             await Task.Delay(350);
             this.Visibility = Visibility.Collapsed;
         }
 
-        private void OnLoaded(object sender, RoutedEventArgs e)
+        private async void OnLoaded(object sender, RoutedEventArgs e)
         {
+            if (System.Windows.Application.Current is App app)
+            {
+                _isInitializingSettings = true;
+                DndToggle.IsChecked = app.Settings.DoNotDisturb;
+                FfmpegPathText.Text = string.IsNullOrWhiteSpace(app.Settings.FfmpegPath)
+                    ? "FFmpeg: cari otomatis melalui PATH"
+                    : $"FFmpeg: {app.Settings.FfmpegPath}";
+                _isInitializingSettings = false;
+            }
+
             LoadData();
             LoadGallery();
+            if (_games.Count == 0)
+                await RefreshGameListAsync();
         }
 
         private void Tab_Click(object sender, RoutedEventArgs e)
@@ -99,173 +128,241 @@ namespace NvidiaCi
             {
                 case "Dashboard":
                     DashboardView.Visibility = Visibility.Visible;
-                    HeaderText.Text = " LITE";
+                    HeaderText.Text = " HOME";
                     break;
                 case "Gallery":
                     GalleryView.Visibility = Visibility.Visible;
-                    HeaderText.Text = " GALLERY";
+                    HeaderText.Text = " GALERI";
                     LoadGallery();
                     break;
                 case "Filters":
                     FiltersView.Visibility = Visibility.Visible;
-                    HeaderText.Text = " FILTERS";
+                    HeaderText.Text = " FILTER";
                     break;
                 case "Settings":
                     SettingsView.Visibility = Visibility.Visible;
-                    HeaderText.Text = " SETTINGS";
+                    HeaderText.Text = " PENGATURAN";
                     SyncSystemSliders();
-                    LoadWifiNetworks();
                     break;
             }
 
-            // Trigger Fade-in Animation
             var sb = (Storyboard)this.Resources["FadeInContent"];
             sb.Begin(ContentView);
         }
 
         private void SyncSystemSliders()
         {
-            try {
-                // Audio
+            _isSyncingControls = true;
+            try
+            {
                 VolumeSlider.Value = SystemControlHelper.GetSystemVolume();
-                // Brightness
-                BrightnessSlider.Value = SystemControlHelper.GetBrightness();
-            } catch { }
-        }
-
-        private void LoadWifiNetworks()
-        {
-            try {
-                var networks = SystemControlHelper.GetAvailableNetworks();
-                WifiComboBox.ItemsSource = networks;
-                if (networks.Any()) WifiComboBox.SelectedIndex = 0;
-            } catch { }
-        }
-
-        private void WifiComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (WifiComboBox.SelectedItem is string ssid)
-            {
-                WifiPasswordBox.Visibility = Visibility.Visible;
-                WifiConnectBtn.Visibility = Visibility.Visible;
-                WifiPasswordBox.Password = "";
+                VolumeSlider.IsEnabled = true;
             }
-        }
-
-        private void ConnectWifi_Click(object sender, RoutedEventArgs e)
-        {
-            if (WifiComboBox.SelectedItem is string ssid)
+            catch (Exception ex)
             {
-                string password = WifiPasswordBox.Password;
-                if (string.IsNullOrEmpty(password)) 
-                {
-                    System.Windows.MessageBox.Show("Password is required for this Beta version.");
-                    return;
-                }
-                
-                // netsh connection with password requires a profile or direct command
-                // For this demo, we'll simulate the attempt
-                Task.Run(() => SystemControlHelper.ConnectToNetwork(ssid));
-                WifiPasswordBox.Visibility = Visibility.Collapsed;
-                WifiConnectBtn.Visibility = Visibility.Collapsed;
+                VolumeSlider.IsEnabled = false;
+                ShowError("Kontrol volume tidak tersedia", ex.Message);
+            }
+
+            try
+            {
+                BrightnessSlider.Value = SystemControlHelper.GetBrightness();
+                BrightnessSlider.IsEnabled = true;
+            }
+            catch (Exception ex)
+            {
+                BrightnessSlider.IsEnabled = false;
+                ShowError("Kontrol brightness tidak tersedia", ex.Message);
+            }
+            finally
+            {
+                _isSyncingControls = false;
             }
         }
 
         private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            if (this.IsLoaded)
+            if (this.IsLoaded && !_isSyncingControls)
             {
-                SystemControlHelper.SetSystemVolume((float)e.NewValue);
+                try
+                {
+                    SystemControlHelper.SetSystemVolume((float)e.NewValue);
+                }
+                catch (Exception ex)
+                {
+                    VolumeSlider.IsEnabled = false;
+                    ShowError("Volume tidak dapat diubah", ex.Message);
+                }
             }
         }
 
         private void BrightnessSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            if (this.IsLoaded)
+            if (this.IsLoaded && !_isSyncingControls)
             {
-                SystemControlHelper.SetBrightness((int)e.NewValue);
+                try
+                {
+                    SystemControlHelper.SetBrightness((int)e.NewValue);
+                }
+                catch (Exception ex)
+                {
+                    BrightnessSlider.IsEnabled = false;
+                    ShowError("Brightness tidak dapat diubah", ex.Message);
+                }
             }
         }
 
         private void ManageWifi_Click(object sender, RoutedEventArgs e)
         {
-            SystemControlHelper.OpenWifiSettings();
+            try
+            {
+                SystemControlHelper.OpenWifiSettings();
+            }
+            catch (Exception ex)
+            {
+                ShowError("Pengaturan Wi-Fi gagal dibuka", ex.Message);
+            }
         }
 
 
 
-        private void LoadGallery()
+        private async void LoadGallery()
         {
             try
             {
-                string screenshotPath = System.IO.Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), 
-                    "Screenshots");
-
-                if (System.IO.Directory.Exists(screenshotPath))
+                string screenshotPath = UserSettingsStore.ScreenshotDirectory;
+                List<GalleryImageItem> images = await Task.Run(() =>
                 {
-                    var files = System.IO.Directory.GetFiles(screenshotPath, "*.png")
-                        .OrderByDescending(f => System.IO.File.GetCreationTime(f))
-                        .Take(12)
-                        .Select(f => {
-                            try {
-                                var bitmap = new System.Windows.Media.Imaging.BitmapImage();
-                                bitmap.BeginInit();
-                                bitmap.UriSource = new Uri(f);
-                                bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-                                bitmap.EndInit();
-                                return new { Path = f, Source = bitmap };
-                            } catch { return null; }
-                        })
-                        .Where(x => x != null)
+                    if (!Directory.Exists(screenshotPath))
+                        return new List<GalleryImageItem>();
+
+                    return Directory.GetFiles(screenshotPath, "*.png")
+                        .OrderByDescending(File.GetCreationTimeUtc)
+                        .Take(24)
+                        .Select(TryLoadGalleryImage)
+                        .Where(image => image != null)
+                        .Cast<GalleryImageItem>()
                         .ToList();
+                });
 
-                    GalleryItemsControl.ItemsSource = files;
-                    NoGalleryText.Visibility = files.Any() ? Visibility.Collapsed : Visibility.Visible;
-                }
-                else
-                {
-                    NoGalleryText.Visibility = Visibility.Visible;
-                }
+                GalleryItemsControl.ItemsSource = images;
+                NoGalleryText.Visibility = images.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                ShowError("Galeri gagal dimuat", ex.Message);
+            }
+        }
+
+        private static GalleryImageItem? TryLoadGalleryImage(string path)
+        {
+            try
+            {
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.UriSource = new Uri(path, UriKind.Absolute);
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.DecodePixelWidth = 480;
+                bitmap.EndInit();
+                bitmap.Freeze();
+                return new GalleryImageItem(path, bitmap);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Gallery image could not be loaded ({path}): {ex.Message}");
+                return null;
+            }
         }
 
         private void LoadData()
         {
-            var games = _dataManager.LoadGames();
-            if (games.Count == 0)
-            {
-                RefreshGameList();
-            }
-            else
-            {
-                GameListBox.ItemsSource = games;
-                NoGamesFoundText.Visibility = games.Any() ? Visibility.Collapsed : Visibility.Visible;
-            }
-        }
-
-        private void RefreshGameList()
-        {
             try
             {
-                var scanner = new GameScanner();
-                var games = scanner.ScanForGames(200); // Increased limit
-                GameListBox.ItemsSource = games;
-                _dataManager.SaveGames(games);
-                NoGamesFoundText.Visibility = games.Any() ? Visibility.Collapsed : Visibility.Visible;
+                _games = _dataManager.LoadGames();
+                ApplyGameFilter();
             }
             catch (Exception ex)
             {
-                System.Windows.MessageBox.Show($"Error scanning games: {ex.Message}");
+                ShowError("Library game gagal dimuat", ex.Message);
+                _games = new List<GameItem>();
+                ApplyGameFilter();
             }
         }
+
+        private async Task RefreshGameListAsync()
+        {
+            ScanButton.IsEnabled = false;
+            ScanButton.Content = "MEMINDAI...";
+            NoGamesFoundText.Visibility = Visibility.Collapsed;
+            try
+            {
+                List<GameItem> games = await Task.Run(() => new GameScanner().ScanForGames(200));
+                _dataManager.SaveGames(games);
+                _games = games;
+                ApplyGameFilter();
+                if (games.Count > 0)
+                    ShowNotification("Scan selesai", $"{games.Count} game valid ditemukan.");
+            }
+            catch (Exception ex)
+            {
+                ShowError("Scan game gagal", ex.Message);
+            }
+            finally
+            {
+                ScanButton.IsEnabled = true;
+                ScanButton.Content = "↻  PINDAI GAME";
+            }
+        }
+
+        private void ApplyGameFilter()
+        {
+            string query = SearchBox?.Text?.Trim() ?? string.Empty;
+            List<GameItem> filtered = string.IsNullOrEmpty(query)
+                ? _games
+                : _games.Where(game => game.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToList();
+
+            GameListBox.ItemsSource = filtered;
+            NoGamesFoundText.Visibility = filtered.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            if (filtered.Count == 0 && _games.Count > 0)
+            {
+                NoGamesTitleText.Text = "Tidak ada hasil";
+                NoGamesHintText.Text = "Coba kata kunci lain untuk mencari game.";
+            }
+            else
+            {
+                NoGamesTitleText.Text = "Belum ada game terdeteksi";
+                NoGamesHintText.Text = "Pindai library Steam, Epic, GOG, EA, atau folder Games.";
+            }
+        }
+
+        private void ShowNotification(string title, string message)
+        {
+            if (System.Windows.Application.Current is App app)
+                app.Notifications.Show(title, message);
+        }
+
+        private void ShowError(string title, string message)
+        {
+            if (System.Windows.Application.Current is App app)
+                app.Notifications.Show(title, message, true);
+            else
+                System.Windows.MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+
+        private sealed record GalleryImageItem(string Path, BitmapSource Source);
         
         private void OpenImage_Click(object sender, RoutedEventArgs e)
         {
             if (sender is System.Windows.Controls.MenuItem mi && mi.Tag is string imagePath)
             {
-                Process.Start(new ProcessStartInfo(imagePath) { UseShellExecute = true });
+                try
+                {
+                    Process.Start(new ProcessStartInfo(imagePath) { UseShellExecute = true });
+                }
+                catch (Exception ex)
+                {
+                    ShowError("File tidak dapat dibuka", ex.Message);
+                }
             }
         }
 
@@ -275,38 +372,49 @@ namespace NvidiaCi
             {
                 try
                 {
-                    // Copy file to clipboard (as file and as image)
-                    var paths = new System.Collections.Specialized.StringCollection { imagePath };
-                    System.Windows.Clipboard.SetFileDropList(paths);
-                    
-                    // Also copy as bitmap image for quick paste in Discord/PS
-                    var bitmap = new System.Windows.Media.Imaging.BitmapImage(new Uri(imagePath));
+                    var bitmap = new BitmapImage(new Uri(imagePath, UriKind.Absolute));
+                    bitmap.Freeze();
                     System.Windows.Clipboard.SetImage(bitmap);
+                    ShowNotification("Gambar disalin", "Screenshot siap ditempel.");
                 }
                 catch (Exception ex)
                 {
-                    System.Windows.MessageBox.Show($"Failed to copy image: {ex.Message}");
+                    ShowError("Gambar gagal disalin", ex.Message);
                 }
             }
         }
 
         private void GalleryItem_PreviewClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            if (sender is FrameworkElement fe && fe.DataContext != null)
+            if (sender is FrameworkElement { DataContext: GalleryImageItem image })
             {
-                dynamic data = fe.DataContext;
-                FullImageDisplay.Source = data.Source;
-                ImagePreviewModal.Visibility = Visibility.Visible;
+                try
+                {
+                    var fullImage = new BitmapImage();
+                    fullImage.BeginInit();
+                    fullImage.UriSource = new Uri(image.Path, UriKind.Absolute);
+                    fullImage.CacheOption = BitmapCacheOption.OnLoad;
+                    fullImage.EndInit();
+                    fullImage.Freeze();
+                    FullImageDisplay.Source = fullImage;
+                    ImagePreviewModal.Visibility = Visibility.Visible;
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Pratinjau screenshot gagal dibuka", ex.Message);
+                }
             }
         }
 
         private void ClosePreview_Click(object sender, RoutedEventArgs e)
         {
+            FullImageDisplay.Source = null;
             ImagePreviewModal.Visibility = Visibility.Collapsed;
         }
 
         private void ClosePreview_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
+            FullImageDisplay.Source = null;
             ImagePreviewModal.Visibility = Visibility.Collapsed;
         }
 
@@ -314,7 +422,15 @@ namespace NvidiaCi
         {
             if (FullImageDisplay.Source is System.Windows.Media.Imaging.BitmapSource bitmap)
             {
-                System.Windows.Clipboard.SetImage(bitmap);
+                try
+                {
+                    System.Windows.Clipboard.SetImage(bitmap);
+                    ShowNotification("Gambar disalin", "Screenshot siap ditempel.");
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Gambar gagal disalin", ex.Message);
+                }
             }
         }
 
@@ -322,7 +438,8 @@ namespace NvidiaCi
         {
             if (sender is System.Windows.Controls.MenuItem mi && mi.Tag is string imagePath)
             {
-                var sfd = new Microsoft.Win32.SaveFileDialog {
+                var sfd = new Microsoft.Win32.SaveFileDialog
+                {
                     FileName = System.IO.Path.GetFileName(imagePath),
                     DefaultExt = ".png",
                     Filter = "PNG Image (.png)|*.png|All files (*.*)|*.*"
@@ -330,7 +447,15 @@ namespace NvidiaCi
 
                 if (sfd.ShowDialog() == true)
                 {
-                    System.IO.File.Copy(imagePath, sfd.FileName, true);
+                    try
+                    {
+                        System.IO.File.Copy(imagePath, sfd.FileName, true);
+                        ShowNotification("Gambar disimpan", sfd.FileName);
+                    }
+                    catch (Exception ex)
+                    {
+                        ShowError("Gambar gagal disimpan", ex.Message);
+                    }
                 }
             }
         }
@@ -339,10 +464,23 @@ namespace NvidiaCi
         {
             if (sender is System.Windows.Controls.MenuItem mi && mi.Tag is string imagePath)
             {
-                try {
+                if (System.Windows.MessageBox.Show(
+                    $"Hapus screenshot ini?\n{imagePath}",
+                    "Hapus screenshot",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question) != MessageBoxResult.Yes)
+                    return;
+
+                try
+                {
                     System.IO.File.Delete(imagePath);
                     LoadGallery();
-                } catch { }
+                    ShowNotification("Screenshot dihapus", "File telah dihapus dari perangkat.");
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Screenshot gagal dihapus", ex.Message);
+                }
             }
         }
 
@@ -353,13 +491,15 @@ namespace NvidiaCi
             var source = HwndSource.FromHwnd(handle);
             source?.AddHook(WndProc);
 
-            // Default Overlay: Alt + Z
-            uint vkOverlay = (uint)HotkeyHelper.GetVirtualKeyCode(System.Windows.Input.Key.Z);
-            HotkeyHelper.RegisterHotKey(handle, HOTKEY_OVERLAY_ID, HotkeyHelper.MOD_ALT, vkOverlay);
+            uint vkOverlay = (uint)HotkeyHelper.GetVirtualKeyCode(_tempOverlayKey);
+            if (!HotkeyHelper.RegisterHotKey(handle, HOTKEY_OVERLAY_ID, HotkeyHelper.MOD_ALT, vkOverlay))
+                ShowError("Shortcut overlay gagal dipasang",
+                    $"Alt + {_tempOverlayKey} mungkin sedang digunakan aplikasi lain (Win32 {System.Runtime.InteropServices.Marshal.GetLastWin32Error()}).");
 
-            // Default Screenshot: F10
-            uint vkScreenshot = (uint)HotkeyHelper.GetVirtualKeyCode(System.Windows.Input.Key.F10);
-            HotkeyHelper.RegisterHotKey(handle, HOTKEY_SCREENSHOT_ID, 0, vkScreenshot);
+            uint vkScreenshot = (uint)HotkeyHelper.GetVirtualKeyCode(_tempScreenshotKey);
+            if (!HotkeyHelper.RegisterHotKey(handle, HOTKEY_SCREENSHOT_ID, 0, vkScreenshot))
+                ShowError("Shortcut screenshot gagal dipasang",
+                    $"{_tempScreenshotKey} mungkin sedang digunakan aplikasi lain (Win32 {System.Runtime.InteropServices.Marshal.GetLastWin32Error()}).");
         }
 
         private void UnregisterGlobalHotkey()
@@ -385,7 +525,7 @@ namespace NvidiaCi
                 else if (id == HOTKEY_SCREENSHOT_ID)
                 {
                     this.Dispatcher.Invoke(() => {
-                        CaptureScreenshot();
+                        TakeScreenshot();
                     });
                     handled = true;
                 }
@@ -393,20 +533,206 @@ namespace NvidiaCi
             return IntPtr.Zero;
         }
 
-        private async void CaptureScreenshot()
+        public void TakeScreenshot()
         {
-            // Flash Effect
-            FlashBorder.Visibility = Visibility.Visible;
-            await Task.Delay(50);
-            FlashBorder.Visibility = Visibility.Collapsed;
+            _ = CaptureScreenshotAsync();
+        }
 
-            string path = ScreenshotHelper.CaptureScreen();
-            if (!string.IsNullOrEmpty(path))
+        private async Task CaptureScreenshotAsync()
+        {
+            if (_isCapturing)
+                return;
+
+            _isCapturing = true;
+            bool restoreOverlay = IsVisible;
+            try
             {
-                if (this.IsVisible && HeaderText.Text.Contains("GALLERY"))
-                {
+                if (restoreOverlay)
+                    await HideAnimated();
+
+                await Task.Delay(100);
+                string path = await Task.Run(ScreenshotHelper.CaptureScreen);
+                if (restoreOverlay)
+                    await ShowAnimated();
+
+                if (HeaderText.Text.Contains("GALERI", StringComparison.OrdinalIgnoreCase))
                     LoadGallery();
+
+                FlashBorder.Visibility = Visibility.Visible;
+                await Task.Delay(70);
+                FlashBorder.Visibility = Visibility.Collapsed;
+                CaptureStatusText.Text = $"Screenshot tersimpan: {path}";
+                ShowNotification("Screenshot tersimpan", path);
+            }
+            catch (Exception ex)
+            {
+                if (restoreOverlay && !IsVisible)
+                    await ShowAnimated();
+                FlashBorder.Visibility = Visibility.Collapsed;
+                ShowError("Screenshot gagal", ex.Message);
+            }
+            finally
+            {
+                _isCapturing = false;
+            }
+        }
+
+        private async void ScreenshotButton_Click(object sender, RoutedEventArgs e)
+        {
+            await CaptureScreenshotAsync();
+        }
+
+        private async void RecordButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (_recordingService.IsRecording)
+                {
+                    RecordButton.IsEnabled = false;
+                    await _recordingService.StopAsync();
+                    RecordButton.IsEnabled = true;
                 }
+                else
+                {
+                    string? ffmpegPath = (System.Windows.Application.Current as App)?.Settings.FfmpegPath;
+                    _recordingService.Start(ffmpegPath);
+                    RecordButton.Content = "■  BERHENTI REKAM";
+                    RecordButton.Foreground = new SolidColorBrush(MediaColor.FromRgb(255, 139, 139));
+                    CaptureStatusText.Text = $"Merekam ke: {_recordingService.RecordingPath}";
+                    ShowNotification("Perekaman dimulai", "Video disimpan di Videos\\NvidiaLite\\Recordings.");
+                }
+            }
+            catch (Exception ex)
+            {
+                RecordButton.IsEnabled = true;
+                ShowError("Perekaman gagal dimulai", ex.Message);
+            }
+        }
+
+        private void OnRecordingStopped(object? sender, RecordingStoppedEventArgs e)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                RecordButton.IsEnabled = true;
+                RecordButton.Content = "●  MULAI REKAM";
+                RecordButton.Foreground = (System.Windows.Media.Brush)FindResource("TextColor");
+
+                if (e.ExitCode == 0 && !string.IsNullOrWhiteSpace(e.Path) && File.Exists(e.Path))
+                {
+                    CaptureStatusText.Text = $"Rekaman tersimpan: {e.Path}";
+                    ShowNotification("Rekaman selesai", e.Path);
+                }
+                else
+                {
+                    string detail = string.IsNullOrWhiteSpace(e.Error) ? $"Kode keluar FFmpeg: {e.ExitCode}." : e.Error;
+                    CaptureStatusText.Text = "Perekaman berhenti karena terjadi kesalahan.";
+                    ShowError("Perekaman gagal", detail);
+                }
+            });
+        }
+
+        private void OpenMediaFolder_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Directory.CreateDirectory(UserSettingsStore.RecordingDirectory);
+                Process.Start(new ProcessStartInfo(UserSettingsStore.RecordingDirectory)
+                {
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                ShowError("Folder media gagal dibuka", ex.Message);
+            }
+        }
+
+        private void ChooseFfmpeg_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "Pilih FFmpeg executable",
+                Filter = "ffmpeg.exe|ffmpeg.exe|Executable (*.exe)|*.exe",
+                CheckFileExists = true
+            };
+
+            if (dialog.ShowDialog() != true)
+                return;
+
+            if (System.Windows.Application.Current is not App app)
+                return;
+
+            try
+            {
+                app.Settings.FfmpegPath = dialog.FileName;
+                app.SaveSettings();
+                FfmpegPathText.Text = $"FFmpeg: {dialog.FileName}";
+                ShowNotification("FFmpeg tersimpan", "Perekam siap digunakan.");
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(
+                    $"Pengaturan FFmpeg gagal disimpan:\n{ex.Message}",
+                    "NVIDIA Lite",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private void DoNotDisturb_Checked(object sender, RoutedEventArgs e) =>
+            UpdateDoNotDisturb(true);
+
+        private void DoNotDisturb_Unchecked(object sender, RoutedEventArgs e) =>
+            UpdateDoNotDisturb(false);
+
+        private void UpdateDoNotDisturb(bool enabled)
+        {
+            if (_isInitializingSettings || System.Windows.Application.Current is not App app)
+                return;
+
+            app.SetDoNotDisturb(enabled);
+        }
+
+        public void UpdateDoNotDisturbToggle(bool enabled)
+        {
+            if (DndToggle == null || DndToggle.IsChecked == enabled)
+                return;
+
+            _isInitializingSettings = true;
+            DndToggle.IsChecked = enabled;
+            _isInitializingSettings = false;
+        }
+
+        private void ApplySpotifyToken_Click(object sender, RoutedEventArgs e)
+        {
+            _spotifyService.SetAccessToken(SpotifyTokenBox.Password);
+            if (_spotifyService.HasAccessToken)
+                SpotifyStatusText.Text = "Token disimpan sementara. Uji dengan kontrol Spotify.";
+            else
+                SpotifyStatusText.Text = "Token belum dimasukkan.";
+        }
+
+        private async void SpotifyPlay_Click(object sender, RoutedEventArgs e) =>
+            await RunSpotifyCommandAsync(_spotifyService.PlayAsync, "Perintah putar dikirim.");
+
+        private async void SpotifyPause_Click(object sender, RoutedEventArgs e) =>
+            await RunSpotifyCommandAsync(_spotifyService.PauseAsync, "Perintah jeda dikirim.");
+
+        private async void SpotifyNext_Click(object sender, RoutedEventArgs e) =>
+            await RunSpotifyCommandAsync(_spotifyService.NextAsync, "Lagu berikutnya diminta.");
+
+        private async Task RunSpotifyCommandAsync(Func<Task> command, string successMessage)
+        {
+            try
+            {
+                await command();
+                SpotifyStatusText.Text = successMessage;
+                ShowNotification("Spotify", successMessage);
+            }
+            catch (Exception ex)
+            {
+                SpotifyStatusText.Text = ex.Message;
+                ShowError("Kontrol Spotify gagal", ex.Message);
             }
         }
 
@@ -414,7 +740,7 @@ namespace NvidiaCi
         {
             _isChangingOverlayHotkey = true;
             _isChangingScreenshotHotkey = false;
-            OverlayHotkeyText.Text = "PRESS ANY KEY...";
+            OverlayHotkeyText.Text = "TEKAN TOMBOL...";
             ChangeOverlayBtn.Visibility = Visibility.Collapsed;
         }
 
@@ -422,7 +748,7 @@ namespace NvidiaCi
         {
             _isChangingScreenshotHotkey = true;
             _isChangingOverlayHotkey = false;
-            ScreenshotHotkeyText.Text = "PRESS ANY KEY...";
+            ScreenshotHotkeyText.Text = "TEKAN TOMBOL...";
             ChangeScreenshotBtn.Visibility = Visibility.Collapsed;
         }
 
@@ -446,29 +772,69 @@ namespace NvidiaCi
 
             if (_isChangingOverlayHotkey)
             {
-                _tempOverlayKey = e.Key;
-                OverlayHotkeyText.Text = $"Alt + {_tempOverlayKey}";
                 _isChangingOverlayHotkey = false;
                 ChangeOverlayBtn.Visibility = Visibility.Visible;
-                
+
                 var handle = new WindowInteropHelper(this).Handle;
                 HotkeyHelper.UnregisterHotKey(handle, HOTKEY_OVERLAY_ID);
-                uint vk = (uint)HotkeyHelper.GetVirtualKeyCode(_tempOverlayKey);
-                HotkeyHelper.RegisterHotKey(handle, HOTKEY_OVERLAY_ID, HotkeyHelper.MOD_ALT, vk);
+                uint vk = (uint)HotkeyHelper.GetVirtualKeyCode(e.Key);
+                if (HotkeyHelper.RegisterHotKey(handle, HOTKEY_OVERLAY_ID, HotkeyHelper.MOD_ALT, vk))
+                {
+                    _tempOverlayKey = e.Key;
+                    OverlayHotkeyText.Text = $"Alt + {_tempOverlayKey}";
+                    SaveHotkeys();
+                }
+                else
+                {
+                    uint previousVk = (uint)HotkeyHelper.GetVirtualKeyCode(_tempOverlayKey);
+                    HotkeyHelper.RegisterHotKey(handle, HOTKEY_OVERLAY_ID, HotkeyHelper.MOD_ALT, previousVk);
+                    ShowError("Shortcut tidak tersedia", $"Alt + {e.Key} sedang digunakan aplikasi lain.");
+                }
                 e.Handled = true;
             }
             else if (_isChangingScreenshotHotkey)
             {
-                _tempScreenshotKey = e.Key;
-                ScreenshotHotkeyText.Text = _tempScreenshotKey.ToString();
                 _isChangingScreenshotHotkey = false;
                 ChangeScreenshotBtn.Visibility = Visibility.Visible;
 
                 var handle = new WindowInteropHelper(this).Handle;
                 HotkeyHelper.UnregisterHotKey(handle, HOTKEY_SCREENSHOT_ID);
-                uint vk = (uint)HotkeyHelper.GetVirtualKeyCode(_tempScreenshotKey);
-                HotkeyHelper.RegisterHotKey(handle, HOTKEY_SCREENSHOT_ID, 0, vk);
+                uint vk = (uint)HotkeyHelper.GetVirtualKeyCode(e.Key);
+                if (HotkeyHelper.RegisterHotKey(handle, HOTKEY_SCREENSHOT_ID, 0, vk))
+                {
+                    _tempScreenshotKey = e.Key;
+                    ScreenshotHotkeyText.Text = _tempScreenshotKey.ToString();
+                    SaveHotkeys();
+                }
+                else
+                {
+                    uint previousVk = (uint)HotkeyHelper.GetVirtualKeyCode(_tempScreenshotKey);
+                    HotkeyHelper.RegisterHotKey(handle, HOTKEY_SCREENSHOT_ID, 0, previousVk);
+                    ShowError("Shortcut tidak tersedia", $"{e.Key} sedang digunakan aplikasi lain.");
+                }
                 e.Handled = true;
+            }
+        }
+
+        private void SaveHotkeys()
+        {
+            if (System.Windows.Application.Current is not App app)
+                return;
+
+            try
+            {
+                app.Settings.OverlayHotkey = _tempOverlayKey.ToString();
+                app.Settings.ScreenshotHotkey = _tempScreenshotKey.ToString();
+                app.UpdateHotkeyMenuLabels();
+                app.SaveSettings();
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(
+                    $"Shortcut berhasil digunakan untuk sesi ini, tetapi gagal disimpan:\n{ex.Message}",
+                    "NVIDIA Lite",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
             }
         }
 
@@ -487,22 +853,29 @@ namespace NvidiaCi
         {
             try
             {
-                if (string.IsNullOrEmpty(exePath) || !System.IO.File.Exists(exePath)) return;
-                Process.Start(new ProcessStartInfo { 
-                    FileName = exePath, 
+                if (string.IsNullOrWhiteSpace(exePath) || !File.Exists(exePath))
+                    throw new FileNotFoundException("Executable game tidak ditemukan.", exePath);
+
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = exePath,
                     WorkingDirectory = System.IO.Path.GetDirectoryName(exePath),
-                    UseShellExecute = true 
+                    UseShellExecute = true
                 });
                 await HideAnimated();
             }
-            catch { }
+            catch (Exception ex)
+            {
+                ShowError("Game gagal dijalankan", ex.Message);
+            }
         }
 
-        private void ScanButton_Click(object sender, RoutedEventArgs e) => RefreshGameList();
+        private async void ScanButton_Click(object sender, RoutedEventArgs e) =>
+            await RefreshGameListAsync();
+
         private void OnClosed(object? sender, EventArgs e)
         {
-            UnregisterGlobalHotkey();
-            _filterWindow?.Close();
+            Dispose();
         }
 
         // --- FILTER HANDLERS ---
@@ -517,16 +890,16 @@ namespace NvidiaCi
 
             if (Enum.TryParse<FilterPreset>(btn.Tag?.ToString(), out var preset))
             {
-                System.Diagnostics.Debug.WriteLine($"Filter: Applying preset {preset}");
                 _activePreset = preset;
-                _filterWindow.ApplyFilter(preset);
-                _filterWindow.Topmost = true; // Force to front
-                _filterWindow.Show(); // Ensure visible
+                _isCustomTint = false;
+                _filterWindow.ApplyFilter(preset, FilterOpacitySlider.Value);
+                _filterWindow.Topmost = true;
+                _filterWindow.Show();
                 UpdateFilterStatus();
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine($"Filter: Failed to parse preset from tag {btn.Tag}");
+                ShowError("Filter tidak dikenali", $"Preset '{btn.Tag}' tidak tersedia.");
             }
         }
 
@@ -540,11 +913,15 @@ namespace NvidiaCi
             try
             {
                 _selectedTintColor = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(colorStr);
-                _activePreset = FilterPreset.None; // custom mode
+                _activePreset = FilterPreset.None;
+                _isCustomTint = true;
                 _filterWindow.ApplyCustomTint(_selectedTintColor, FilterOpacitySlider.Value);
                 UpdateFilterStatus();
             }
-            catch { }
+            catch (Exception ex)
+            {
+                ShowError("Warna filter tidak valid", ex.Message);
+            }
         }
 
         private void FilterOpacity_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -553,56 +930,43 @@ namespace NvidiaCi
 
             FilterOpacityLabel.Text = $"{(int)e.NewValue}%";
 
-            if (_activePreset == FilterPreset.None)
+            if (_isCustomTint)
             {
                 _filterWindow.ApplyCustomTint(_selectedTintColor, e.NewValue);
             }
             else
             {
-                // Re-apply preset (presets have fixed alpha, opacity slider adjusts intensity)
-                _filterWindow.ApplyFilter(_activePreset);
+                _filterWindow.ApplyFilter(_activePreset, e.NewValue);
             }
         }
 
         private void UpdateFilterStatus()
         {
-            if (_activePreset == FilterPreset.None && _filterWindow != null)
+            if (_filterWindow == null)
+                return;
+
+            if (_isCustomTint && FilterOpacitySlider.Value > 0)
             {
-                bool hasCustom = FilterOpacitySlider.Value > 0;
-                FilterStatusDot.Fill = hasCustom
-                    ? new System.Windows.Media.SolidColorBrush(_selectedTintColor)
-                    : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Gray);
-                FilterStatusText.Text = hasCustom ? $"Custom tint active" : "No filter active";
-                FilterStatusText.Foreground = hasCustom
-                    ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.White)
-                    : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x88, 0x88, 0x88));
+                FilterStatusDot.Fill = new SolidColorBrush(_selectedTintColor);
+                FilterStatusText.Text = "Warna kustom aktif";
+                FilterStatusText.Foreground = (System.Windows.Media.Brush)FindResource("TextColor");
+            }
+            else if (_activePreset == FilterPreset.None)
+            {
+                FilterStatusDot.Fill = new SolidColorBrush(Colors.Gray);
+                FilterStatusText.Text = "Filter tidak aktif";
+                FilterStatusText.Foreground = new SolidColorBrush(MediaColor.FromRgb(0x9A, 0xA7, 0xB5));
             }
             else
             {
-                FilterStatusDot.Fill = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x76, 0xB9, 0x00));
-                FilterStatusText.Text = $"Preset: {_activePreset}";
-                FilterStatusText.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.White);
+                FilterStatusDot.Fill = (System.Windows.Media.Brush)FindResource("AccentColor");
+                FilterStatusText.Text = $"Preset aktif: {_activePreset}";
+                FilterStatusText.Foreground = (System.Windows.Media.Brush)FindResource("TextColor");
             }
         }
         private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            try
-            {
-                string query = SearchBox.Text.ToLower().Trim();
-                var games = _dataManager.LoadGames();
-                
-                if (string.IsNullOrEmpty(query))
-                {
-                    GameListBox.ItemsSource = games;
-                }
-                else
-                {
-                    var filtered = games.Where(g => g.Name.ToLower().Contains(query)).ToList();
-                    GameListBox.ItemsSource = filtered;
-                    NoGamesFoundText.Visibility = filtered.Any() ? Visibility.Collapsed : Visibility.Visible;
-                }
-            }
-            catch { }
+            ApplyGameFilter();
         }
 
         private async void Background_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -624,11 +988,23 @@ namespace NvidiaCi
             this.Height = SystemParameters.PrimaryScreenHeight;
             
             // Adjust Sidebar Width for Grid layout
-            SidebarBorder.Width = 650; 
+            SidebarBorder.Width = 760;
 
             // Ensure transparency and topmost
             this.Topmost = false;
             this.Topmost = true;
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+
+            _disposed = true;
+            _recordingService.RecordingStopped -= OnRecordingStopped;
+            _recordingService.Dispose();
+            UnregisterGlobalHotkey();
+            _filterWindow?.Close();
         }
     }
 }

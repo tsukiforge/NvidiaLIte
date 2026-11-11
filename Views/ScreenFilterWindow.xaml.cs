@@ -39,59 +39,45 @@ namespace NvidiaCi
 
         public void PositionWindow()
         {
-            this.Left = 0;
-            this.Top = 0;
+            this.Left = SystemParameters.VirtualScreenLeft;
+            this.Top = SystemParameters.VirtualScreenTop;
             this.Width = SystemParameters.VirtualScreenWidth;
             this.Height = SystemParameters.VirtualScreenHeight;
             
             System.Diagnostics.Debug.WriteLine($"ScreenFilterWindow positioned: {this.Width}x{this.Height} at ({this.Left},{this.Top})");
         }
 
-        /// <summary>
-        /// Apply a color overlay filter. Pass Colors.Transparent to disable.
-        /// </summary>
-        public void ApplyFilter(FilterPreset preset)
+        public void ApplyFilter(FilterPreset preset, double intensity = 20)
         {
+            double scale = Math.Clamp(intensity / 20.0, 0, 3);
             switch (preset)
             {
                 case FilterPreset.None:
-                    FilterRect.Fill = new SolidColorBrush(WpfColor.FromArgb(0, 0, 0, 0));
-                    FilterRect.Effect = null;
+                    SetTint(0, 0, 0, 0, scale);
                     break;
 
                 case FilterPreset.Vivid:
-                    // Warm slight saturation boost via orange tint
-                    FilterRect.Fill = new SolidColorBrush(WpfColor.FromArgb(18, 255, 140, 0));
-                    FilterRect.Effect = null;
+                    SetTint(18, 255, 140, 0, scale);
                     break;
 
                 case FilterPreset.CoolBlue:
-                    FilterRect.Fill = new SolidColorBrush(WpfColor.FromArgb(20, 30, 80, 200));
-                    FilterRect.Effect = null;
+                    SetTint(20, 30, 80, 200, scale);
                     break;
 
                 case FilterPreset.NightMode:
-                    // Red tint to reduce blue light
-                    FilterRect.Fill = new SolidColorBrush(WpfColor.FromArgb(35, 180, 20, 0));
-                    FilterRect.Effect = null;
+                    SetTint(35, 180, 20, 0, scale);
                     break;
 
                 case FilterPreset.Cinematic:
-                    // Dark vignette-style desaturated look
-                    FilterRect.Fill = new SolidColorBrush(WpfColor.FromArgb(25, 0, 0, 0));
-                    FilterRect.Effect = null;
+                    SetTint(25, 0, 0, 0, scale);
                     break;
 
                 case FilterPreset.Reading:
-                    // Sepia-like warm tone for comfortable reading (reduces blue light)
-                    FilterRect.Fill = new SolidColorBrush(WpfColor.FromArgb(30, 255, 240, 200));
-                    FilterRect.Effect = null;
+                    SetTint(30, 255, 240, 200, scale);
                     break;
 
                 case FilterPreset.Sharpen:
-                    FilterRect.Fill = new SolidColorBrush(WpfColor.FromArgb(0, 0, 0, 0));
-                    // Simulate sharpen via blur on a dark overlay (contrast edge trick)
-                    FilterRect.Effect = new BlurEffect { Radius = 0.5, KernelType = KernelType.Gaussian };
+                    SetTint(0, 0, 0, 0, scale);
                     break;
             }
         }
@@ -101,8 +87,15 @@ namespace NvidiaCi
         /// </summary>
         public void ApplyCustomTint(WpfColor color, double opacity)
         {
-            byte alpha = (byte)(opacity / 100.0 * 255);
+            byte alpha = (byte)(Math.Clamp(opacity, 0, 100) / 100.0 * 255);
             FilterRect.Fill = new SolidColorBrush(WpfColor.FromArgb(alpha, color.R, color.G, color.B));
+            FilterRect.Effect = null;
+        }
+
+        private void SetTint(byte alpha, byte red, byte green, byte blue, double scale)
+        {
+            byte scaledAlpha = (byte)Math.Clamp(Math.Round(alpha * scale), 0, 255);
+            FilterRect.Fill = new SolidColorBrush(WpfColor.FromArgb(scaledAlpha, red, green, blue));
             FilterRect.Effect = null;
         }
     }

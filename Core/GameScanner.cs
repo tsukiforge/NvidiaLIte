@@ -1,229 +1,404 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.Win32;
 
 namespace NvidiaCi
 {
     public class GameScanner
     {
-        private readonly List<string> _targetFolders = new();
-        
-        private readonly string[] _skipFolders = 
-        { 
-            "Windows", "Common Files", "Microsoft", "WindowsApps", "Reference Assemblies",
-            "MSBuild", "Git", "NodeJS", "PowerShell", "Packages", "DriverStore", "Temp",
-            "Uninstall Information", "System32", "SysWOW64", "AMD", "Intel", "NVIDIA Corporation",
-            "Realtek", "Bonjour", "Adobe", "Dropbox", "OneDrive", "Docker", "bin", "obj", 
-            "Autodesk", "Common", "DirectX", "Vulkan", "Microsoft.NET", "Internet Explorer", 
-            "Windows Defender", "Windows Mail", "Windows NT", "Windows Photo Viewer", "Windows Sidebar",
-            "Windows Portable Devices", "Windows PowerShell", "Microsoft Office"
-        };
+        private readonly List<GameItem> _games = new();
+        private readonly HashSet<string> _gamePaths = new(StringComparer.OrdinalIgnoreCase);
+        private readonly string _iconDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "NvidiaCi",
+            "GameIcons");
 
-        private readonly string[] _skipFiles = 
+        public List<GameItem> ScanForGames(int maxResults = 200)
         {
-            "unins000", "uninstall", "helper", "crash", "setup", "update", "mDNSResponder",
-            "ddpe", "dotnet", "apphost", "singlefilehost", "xmlwf", "wish", "tcl", "python",
-            "protoc", "conhost", "cmd", "powershell", "vc_redist", "node", "npm", "git", "gpg",
-            "DXSETUP", "vcredist", "UnityCrashHandler", "BsSndRpt", "Launcher", "Config", 
-            "Report", "Bug", "Redist", "Framework", "Service", "Agent"
-        };
+            _games.Clear();
+            _gamePaths.Clear();
 
-        public GameScanner()
-        {
-            // Detect game library paths from registry
-            DetectSteamLibraries();
-            DetectEpicGames();
-            DetectGOGGames();
-            DetectEAGames();
-            
-            // Fallback manual paths
-            AddFallbackPaths();
+            ScanSteamLibraries(maxResults);
+            ScanEpicGames(maxResults);
+            ScanGogGames(maxResults);
+            ScanEaGames(maxResults);
+            ScanManualLibraries(maxResults);
+
+            return _games
+                .OrderBy(game => game.Name, StringComparer.CurrentCultureIgnoreCase)
+                .Take(maxResults)
+                .ToList();
         }
 
-        private void DetectSteamLibraries()
+        private void ScanSteamLibraries(int maxResults)
         {
-            try
+            var steamRoots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach ((RegistryHive hive, RegistryView view) in GetRegistryLocations())
             {
-                // Steam install path
-                using var key = Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam");
-                if (key != null)
+                try
                 {
-                    string? steamPath = key.GetValue("SteamPath") as string;
-                    if (!string.IsNullOrEmpty(steamPath))
+                    using var baseKey = RegistryKey.OpenBaseKey(hive, view);
+                    using var steamKey = baseKey.OpenSubKey(@"SOFTWARE\Valve\Steam");
+                    if (steamKey != null)
                     {
-                        // Main library
-                        string mainLibrary = Path.Combine(steamPath, "steamapps", "common");
-                        if (Directory.Exists(mainLibrary))
-                            _targetFolders.Add(mainLibrary);
-
-                        // Additional libraries from libraryfolders.vdf
-                        string vdfPath = Path.Combine(steamPath, "steamapps", "libraryfolders.vdf");
-                        if (File.Exists(vdfPath))
-                        {
-                            var lines = File.ReadAllLines(vdfPath);
-                            foreach (var line in lines)
-                            {
-                                if (line.Contains("\"path\""))
-                                {
-                                    var match = System.Text.RegularExpressions.Regex.Match(line, "\"path\"\\s+\"(.+?)\"");
-                                    if (match.Success)
-                                    {
-                                        string libPath = Path.Combine(match.Groups[1].Value.Replace("\\\\", "\\"), "steamapps", "common");
-                                        if (Directory.Exists(libPath) && !_targetFolders.Contains(libPath))
-                                            _targetFolders.Add(libPath);
-                                    }
-                                }
-                            }
-                        }
+                        AddPath(steamRoots, steamKey.GetValue("InstallPath") as string);
+                        AddPath(steamRoots, steamKey.GetValue("SteamPath") as string);
                     }
                 }
-            }
-            catch { }
-        }
-
-        private void DetectEpicGames()
-        {
-            try
-            {
-                string epicPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), 
-                    "Epic", "EpicGamesLauncher", "Data", "Manifests");
-                
-                if (Directory.Exists(epicPath))
+                catch (Exception ex)
                 {
-                    var manifests = Directory.GetFiles(epicPath, "*.item");
-                    foreach (var manifest in manifests)
+                    Debug.WriteLine($"Steam registry lookup failed: {ex.Message}");
+                }
+            }
+
+            foreach (string steamRoot in steamRoots)
+            {
+                var libraries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                AddPath(libraries, steamRoot);
+
+                string libraryFile = Path.Combine(steamRoot, "steamapps", "libraryfolders.vdf");
+                if (File.Exists(libraryFile))
+                {
+                    try
+                    {
+                        foreach (string line in File.ReadLines(libraryFile))
+                        {
+                            Match match = Regex.Match(line, "\"path\"\\s+\"(.+?)\"", RegexOptions.IgnoreCase);
+                            if (match.Success)
+                                AddPath(libraries, match.Groups[1].Value.Replace("\\\\", "\\"));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Steam library list could not be read: {ex.Message}");
+                    }
+                }
+
+                foreach (string library in libraries)
+                {
+                    string steamApps = Path.Combine(library, "steamapps");
+                    if (!Directory.Exists(steamApps))
+                        steamApps = Path.Combine(library, "steamapps");
+
+                    foreach (string manifest in EnumerateFiles(steamApps, "appmanifest_*.acf"))
                     {
                         try
                         {
-                            var json = File.ReadAllText(manifest);
-                            var match = System.Text.RegularExpressions.Regex.Match(json, "\"InstallLocation\"\\s*:\\s*\"(.+?)\"");
-                            if (match.Success)
-                            {
-                                string installPath = match.Groups[1].Value.Replace("\\\\", "\\");
-                                if (Directory.Exists(installPath) && !_targetFolders.Contains(installPath))
-                                    _targetFolders.Add(installPath);
-                            }
+                            string content = File.ReadAllText(manifest);
+                            string? name = ReadVdfValue(content, "name");
+                            string? installDirectory = ReadVdfValue(content, "installdir");
+                            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(installDirectory))
+                                continue;
+
+                            AddGame(name, Path.Combine(steamApps, "common", installDirectory), null, "Steam");
+                            if (_games.Count >= maxResults) return;
                         }
-                        catch { }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Steam manifest could not be read ({manifest}): {ex.Message}");
+                        }
                     }
                 }
             }
-            catch { }
         }
 
-        private void DetectGOGGames()
+        private void ScanEpicGames(int maxResults)
         {
-            try
+            string manifestDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "Epic",
+                "EpicGamesLauncher",
+                "Data",
+                "Manifests");
+
+            foreach (string manifest in EnumerateFiles(manifestDirectory, "*.item"))
             {
-                using var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\GOG.com\Games");
-                if (key != null)
-                {
-                    foreach (var subKeyName in key.GetSubKeyNames())
-                    {
-                        using var gameKey = key.OpenSubKey(subKeyName);
-                        string? path = gameKey?.GetValue("path") as string;
-                        if (!string.IsNullOrEmpty(path) && Directory.Exists(path) && !_targetFolders.Contains(path))
-                            _targetFolders.Add(path);
-                    }
-                }
-            }
-            catch { }
-        }
-
-        private void DetectEAGames()
-        {
-            try
-            {
-                string eaPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "EA Games");
-                if (Directory.Exists(eaPath))
-                    _targetFolders.Add(eaPath);
-            }
-            catch { }
-        }
-
-        private void AddFallbackPaths()
-        {
-            var fallbacks = new[]
-            {
-                @"C:\Games",
-                @"D:\Games",
-                @"E:\Games",
-                @"C:\Program Files (x86)\Steam\steamapps\common",
-                @"C:\Program Files\Steam\steamapps\common"
-            };
-
-            foreach (var path in fallbacks)
-            {
-                if (Directory.Exists(path) && !_targetFolders.Contains(path))
-                    _targetFolders.Add(path);
-            }
-        }
-
-        public List<GameItem> ScanForGames(int maxResults = 100)
-        {
-            var results = new List<GameItem>();
-
-            foreach (var root in _targetFolders)
-            {
-                if (!Directory.Exists(root)) continue;
-
                 try
                 {
-                    ScanDirectory(root, results, maxResults);
+                    using JsonDocument document = JsonDocument.Parse(File.ReadAllText(manifest));
+                    JsonElement root = document.RootElement;
+                    string? name = ReadJsonString(root, "DisplayName");
+                    string? installLocation = ReadJsonString(root, "InstallLocation");
+                    string? launchExecutable = ReadJsonString(root, "LaunchExecutable");
+
+                    if (!string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(installLocation))
+                    {
+                        AddGame(name, installLocation, launchExecutable, "Epic Games");
+                        if (_games.Count >= maxResults) return;
+                    }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // Root level access issues or drive not ready
+                    Debug.WriteLine($"Epic manifest could not be read ({manifest}): {ex.Message}");
                 }
-
-                if (results.Count >= maxResults) break;
             }
-
-            return results.OrderBy(g => g.Name).ToList();
         }
 
-        private void ScanDirectory(string path, List<GameItem> results, int maxResults, int depth = 0)
+        private void ScanGogGames(int maxResults)
         {
-            if (results.Count >= maxResults || depth > 3) return;
+            foreach ((RegistryHive hive, RegistryView view) in GetRegistryLocations())
+            {
+                try
+                {
+                    using var baseKey = RegistryKey.OpenBaseKey(hive, view);
+                    using var gamesKey = baseKey.OpenSubKey(@"SOFTWARE\GOG.com\Games");
+                    if (gamesKey == null) continue;
+
+                    foreach (string subKeyName in gamesKey.GetSubKeyNames())
+                    {
+                        using var gameKey = gamesKey.OpenSubKey(subKeyName);
+                        string? installPath = gameKey?.GetValue("path") as string;
+                        string? name = gameKey?.GetValue("gameName") as string;
+                        if (string.IsNullOrWhiteSpace(name))
+                            name = gameKey?.GetValue("name") as string;
+                        if (string.IsNullOrWhiteSpace(name))
+                            name = subKeyName;
+
+                        AddGame(name, installPath, null, "GOG");
+                        if (_games.Count >= maxResults) return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"GOG registry lookup failed: {ex.Message}");
+                }
+            }
+        }
+
+        private void ScanEaGames(int maxResults)
+        {
+            foreach ((RegistryHive hive, RegistryView view) in GetRegistryLocations())
+            {
+                try
+                {
+                    using var baseKey = RegistryKey.OpenBaseKey(hive, view);
+                    using var gamesKey = baseKey.OpenSubKey(@"SOFTWARE\Electronic Arts\Electronic Arts");
+                    if (gamesKey == null) continue;
+
+                    foreach (string subKeyName in gamesKey.GetSubKeyNames())
+                    {
+                        using var gameKey = gamesKey.OpenSubKey(subKeyName);
+                        string? installPath =
+                            gameKey?.GetValue("Install Dir") as string ??
+                            gameKey?.GetValue("InstallDir") as string ??
+                            gameKey?.GetValue("InstallPath") as string;
+                        if (string.IsNullOrWhiteSpace(installPath))
+                            continue;
+
+                        string? name = gameKey?.GetValue("DisplayName") as string;
+                        AddGame(name ?? subKeyName, installPath, null, "EA");
+                        if (_games.Count >= maxResults) return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"EA registry lookup failed: {ex.Message}");
+                }
+            }
+
+            string eaDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                "EA Games");
+            ScanInstallFolders(eaDirectory, "EA", maxResults);
+        }
+
+        private void ScanManualLibraries(int maxResults)
+        {
+            foreach (string root in new[] { @"C:\Games", @"D:\Games", @"E:\Games" })
+            {
+                ScanInstallFolders(root, "Local", maxResults);
+                if (_games.Count >= maxResults) return;
+            }
+        }
+
+        private void ScanInstallFolders(string root, string platform, int maxResults)
+        {
+            foreach (string directory in EnumerateDirectories(root))
+            {
+                AddGame(Path.GetFileName(directory), directory, null, platform);
+                if (_games.Count >= maxResults) return;
+            }
+        }
+
+        private void AddGame(string name, string? installPath, string? relativeExecutable, string platform)
+        {
+            if (string.IsNullOrWhiteSpace(installPath))
+                return;
+
+            installPath = Environment.ExpandEnvironmentVariables(installPath.Trim().Trim('"'));
+            if (!Directory.Exists(installPath))
+                return;
+
+            string? executable = null;
+            if (!string.IsNullOrWhiteSpace(relativeExecutable))
+            {
+                string candidate = Path.GetFullPath(Path.Combine(installPath, relativeExecutable));
+                if (File.Exists(candidate))
+                    executable = candidate;
+            }
+
+            executable ??= FindGameExecutable(installPath);
+            if (executable == null || !_gamePaths.Add(executable))
+                return;
+
+            _games.Add(new GameItem
+            {
+                Name = name.Trim(),
+                Path = executable,
+                Platform = platform,
+                IconPath = ExtractIcon(executable)
+            });
+        }
+
+        private static string? FindGameExecutable(string installPath)
+        {
+            var candidates = new List<string>();
+            CollectExecutables(installPath, candidates, 0);
+
+            string? preferred = candidates
+                .Where(path => !IsSupportExecutable(Path.GetFileNameWithoutExtension(path)))
+                .OrderByDescending(GetFileSize)
+                .FirstOrDefault();
+
+            return preferred ?? candidates.OrderByDescending(GetFileSize).FirstOrDefault();
+        }
+
+        private static void CollectExecutables(string directory, List<string> candidates, int depth)
+        {
+            if (depth > 3) return;
 
             try
             {
-                // 1. Get .exe files
-                var files = Directory.GetFiles(path, "*.exe");
-                foreach (var file in files)
+                candidates.AddRange(Directory.EnumerateFiles(directory, "*.exe", SearchOption.TopDirectoryOnly));
+                if (depth == 3) return;
+
+                foreach (string child in Directory.EnumerateDirectories(directory))
                 {
-                    string fileName = Path.GetFileNameWithoutExtension(file);
+                    string folderName = Path.GetFileName(child);
+                    if (folderName.Equals("Redist", StringComparison.OrdinalIgnoreCase) ||
+                        folderName.Equals("Support", StringComparison.OrdinalIgnoreCase) ||
+                        folderName.Equals("EasyAntiCheat", StringComparison.OrdinalIgnoreCase) ||
+                        folderName.Equals("BattlEye", StringComparison.OrdinalIgnoreCase))
+                        continue;
 
-                    // EXTENSIVE FILTERING for "Real Games"
-                    if (_skipFiles.Any(s => fileName.Contains(s, StringComparison.OrdinalIgnoreCase))) continue;
-                    
-                    // Skip if path contains typical system folders
-                    if (path.Contains("Windows", StringComparison.OrdinalIgnoreCase) || 
-                        path.Contains("System32", StringComparison.OrdinalIgnoreCase) ||
-                        path.Contains("Microsoft", StringComparison.OrdinalIgnoreCase)) continue;
-
-                    // Requirements check: must not be a tiny file (games are usually > 1MB)
-                    var info = new FileInfo(file);
-                    if (info.Length < 1024 * 1024) continue;
-
-                    results.Add(new GameItem { Name = fileName, Path = file });
-                    if (results.Count >= maxResults) return;
-                }
-
-                // 2. Subdirectories
-                var subDirs = Directory.GetDirectories(path);
-                foreach (var dir in subDirs)
-                {
-                    string dirName = Path.GetFileName(dir);
-                    if (_skipFolders.Any(s => dirName.Equals(s, StringComparison.OrdinalIgnoreCase))) continue;
-
-                    ScanDirectory(dir, results, maxResults, depth + 1);
-                    if (results.Count >= maxResults) return;
+                    CollectExecutables(child, candidates, depth + 1);
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Could not inspect game folder ({directory}): {ex.Message}");
+            }
+        }
+
+        private static bool IsSupportExecutable(string name) =>
+            name.Contains("unins", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("uninstall", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("setup", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("crash", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("redist", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("vc_redist", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("launcher", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("report", StringComparison.OrdinalIgnoreCase);
+
+        private string? ExtractIcon(string executable)
+        {
+            try
+            {
+                Directory.CreateDirectory(_iconDirectory);
+                byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(executable.ToUpperInvariant()));
+                string iconPath = Path.Combine(_iconDirectory, Convert.ToHexString(hash) + ".png");
+                if (File.Exists(iconPath))
+                    return iconPath;
+
+                using var icon = System.Drawing.Icon.ExtractAssociatedIcon(executable);
+                if (icon == null) return null;
+
+                using var bitmap = icon.ToBitmap();
+                bitmap.Save(iconPath, System.Drawing.Imaging.ImageFormat.Png);
+                return iconPath;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Could not extract game icon ({executable}): {ex.Message}");
+                return null;
+            }
+        }
+
+        private static IEnumerable<(RegistryHive Hive, RegistryView View)> GetRegistryLocations()
+        {
+            yield return (RegistryHive.CurrentUser, RegistryView.Registry64);
+            yield return (RegistryHive.CurrentUser, RegistryView.Registry32);
+            yield return (RegistryHive.LocalMachine, RegistryView.Registry64);
+            yield return (RegistryHive.LocalMachine, RegistryView.Registry32);
+        }
+
+        private static string? ReadVdfValue(string content, string key)
+        {
+            Match match = Regex.Match(
+                content,
+                $"\"{Regex.Escape(key)}\"\\s+\"(.+?)\"",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            return match.Success ? match.Groups[1].Value : null;
+        }
+
+        private static string? ReadJsonString(JsonElement root, string propertyName) =>
+            root.TryGetProperty(propertyName, out JsonElement value) && value.ValueKind == JsonValueKind.String
+                ? value.GetString()
+                : null;
+
+        private static void AddPath(HashSet<string> paths, string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return;
+            string path = Environment.ExpandEnvironmentVariables(value.Trim().Trim('"'));
+            if (Directory.Exists(path))
+                paths.Add(Path.GetFullPath(path));
+        }
+
+        private static IEnumerable<string> EnumerateFiles(string directory, string pattern)
+        {
+            try
+            {
+                return Directory.Exists(directory)
+                    ? Directory.EnumerateFiles(directory, pattern, SearchOption.TopDirectoryOnly).ToArray()
+                    : Array.Empty<string>();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Could not list files in {directory}: {ex.Message}");
+                return Array.Empty<string>();
+            }
+        }
+
+        private static IEnumerable<string> EnumerateDirectories(string directory)
+        {
+            try
+            {
+                return Directory.Exists(directory)
+                    ? Directory.EnumerateDirectories(directory, "*", SearchOption.TopDirectoryOnly).ToArray()
+                    : Array.Empty<string>();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Could not list folders in {directory}: {ex.Message}");
+                return Array.Empty<string>();
+            }
+        }
+
+        private static long GetFileSize(string path)
+        {
+            try { return new FileInfo(path).Length; }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Could not read executable size ({path}): {ex.Message}");
+                return 0;
+            }
         }
     }
 }

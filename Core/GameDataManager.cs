@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using System.Diagnostics;
 
 namespace NvidiaCi
 {
@@ -26,37 +27,31 @@ namespace NvidiaCi
 
         public void SaveGames(List<GameItem> games)
         {
-            try
-            {
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                string jsonString = JsonSerializer.Serialize(games, options);
-                File.WriteAllText(_filePath, jsonString);
-            }
-            catch (Exception ex)
-            {
-                // Dalam aplikasi nyata, Anda mungkin ingin melakukan logging di sini
-                Console.WriteLine($"Failed to save games: {ex.Message}");
-            }
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            string jsonString = JsonSerializer.Serialize(games, options);
+            string temporaryPath = _filePath + ".tmp";
+            File.WriteAllText(temporaryPath, jsonString);
+            File.Move(temporaryPath, _filePath, true);
         }
 
         public List<GameItem> LoadGames()
         {
+            if (!File.Exists(_filePath))
+                return new List<GameItem>();
+
             try
             {
-                if (!File.Exists(_filePath))
-                {
-                    return new List<GameItem>();
-                }
-
                 string jsonString = File.ReadAllText(_filePath);
-                var games = JsonSerializer.Deserialize<List<GameItem>>(jsonString);
-                
-                return games ?? new List<GameItem>();
+                var games = JsonSerializer.Deserialize<List<GameItem>>(jsonString) ?? new List<GameItem>();
+                return games.FindAll(game =>
+                    !string.IsNullOrWhiteSpace(game.Name) &&
+                    !string.IsNullOrWhiteSpace(game.Platform) &&
+                    File.Exists(game.Path));
             }
-            catch (Exception)
+            catch (JsonException ex)
             {
-                // Jika file korup atau ada error, kembalikan list kosong
-                return new List<GameItem>();
+                Debug.WriteLine($"Saved game list is invalid ({_filePath}): {ex.Message}");
+                throw new InvalidDataException($"Saved game list is invalid: {_filePath}", ex);
             }
         }
     }

@@ -3,64 +3,100 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:NvidiaCi">
     <Application.Resources>
-        <!-- NVIDIA Industrial Color Palette -->
-        <SolidColorBrush x:Key="AccentColor" Color="#E60012" /> <!-- NVIDIA Red (RTX) -->
-        <SolidColorBrush x:Key="AccentHover" Color="#FF1A1A" />
-        <SolidColorBrush x:Key="BackgroundColor" Color="#E6000000" /> <!-- Almost black with slight transparency -->
-        <SolidColorBrush x:Key="CardBackground" Color="#1A1A1A" />
-        <SolidColorBrush x:Key="SecondaryBackgroundColor" Color="#0D0D0D" />
-        <SolidColorBrush x:Key="TextColor" Color="#FFFFFF" />
-        <SolidColorBrush x:Key="TextSecondary" Color="#B0B0B0" />
-        <SolidColorBrush x:Key="BorderColor" Color="#2A2A2A" />
+        <SolidColorBrush x:Key="AccentColor" Color="#FFB7A1FF" />
+        <SolidColorBrush x:Key="AccentHover" Color="#FFD4BFFF" />
+        <SolidColorBrush x:Key="AccentCyan" Color="#FF8DE7F5" />
+        <SolidColorBrush x:Key="AccentPink" Color="#FFFFA9D6" />
+        <SolidColorBrush x:Key="BackgroundColor" Color="#D927203F" />
+        <SolidColorBrush x:Key="CardBackground" Color="#35C6B9E8" />
+        <SolidColorBrush x:Key="SecondaryBackgroundColor" Color="#CE26213C" />
+        <SolidColorBrush x:Key="TextColor" Color="#FFF5F0FF" />
+        <SolidColorBrush x:Key="TextSecondary" Color="#FFCBC3DC" />
+        <SolidColorBrush x:Key="BorderColor" Color="#52E8DFFF" />
+        <LinearGradientBrush x:Key="GlassPanelBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#E52B2444" Offset="0"/>
+            <GradientStop Color="#D92C3554" Offset="0.52"/>
+            <GradientStop Color="#E5203049" Offset="1"/>
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="AccentGradientBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#FFB7A1FF" Offset="0"/>
+            <GradientStop Color="#FF9DABFF" Offset="0.55"/>
+            <GradientStop Color="#FF8DE7F5" Offset="1"/>
+        </LinearGradientBrush>
 
-        <!-- Game Item Template (Modern Card with hover glow) -->
         <DataTemplate x:Key="GameItemTemplate">
-            <Grid Width="140" Margin="6">
+            <Grid Width="148" Margin="6">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="180" />
+                    <RowDefinition Height="160" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                
-                <Border Grid.Row="0" Background="{StaticResource CardBackground}" CornerRadius="12" Margin="0,0,0,12" 
-                        x:Name="ImageBorder" BorderThickness="1" BorderBrush="{StaticResource BorderColor}">
+
+                <Border x:Name="ImageBorder"
+                        Grid.Row="0"
+                        Margin="0,0,0,10"
+                        Background="{StaticResource CardBackground}"
+                        BorderBrush="{StaticResource BorderColor}"
+                        BorderThickness="1"
+                        CornerRadius="16">
                     <Grid>
-                        <!-- Red glow on hover -->
-                        <Border x:Name="GlowEffect" CornerRadius="12" BorderBrush="{StaticResource AccentColor}" 
-                                BorderThickness="2" Opacity="0">
-                            <Border.Effect>
-                                <DropShadowEffect Color="#E60012" BlurRadius="20" ShadowDepth="0" Opacity="0.8"/>
-                            </Border.Effect>
-                        </Border>
-                        
-                        <TextBlock Text="🎮" VerticalAlignment="Center" HorizontalAlignment="Center" 
-                                   FontSize="56" Opacity="0.15"/>
-                        
-                        <!-- Play overlay on hover -->
-                        <Border x:Name="PlayOverlay" Background="#CC000000" CornerRadius="12" Opacity="0">
+                        <TextBlock Text="◈"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Center"
+                                   FontSize="46"
+                                   Foreground="#55D5C4FF"/>
+                        <Image Source="{Binding IconPath}"
+                               Margin="12"
+                               Stretch="Uniform"
+                               RenderOptions.BitmapScalingMode="Fant"/>
+                        <Border x:Name="PlayOverlay"
+                                Background="#C02A2440"
+                                CornerRadius="15"
+                                Opacity="0">
                             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                <TextBlock Text="▶" Foreground="{StaticResource AccentColor}" FontSize="36" 
-                                           HorizontalAlignment="Center" FontWeight="Bold"/>
-                                <TextBlock Text="LAUNCH" Foreground="White" FontSize="10" 
-                                           HorizontalAlignment="Center" Margin="0,4,0,0" FontWeight="SemiBold"/>
+                                <TextBlock Text="▶"
+                                           Foreground="{StaticResource AccentColor}"
+                                           FontSize="30"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="MAIN"
+                                           Foreground="#FFF5F0FF"
+                                           FontSize="10"
+                                           HorizontalAlignment="Center"
+                                           Margin="0,5,0,0"
+                                           FontWeight="SemiBold"/>
                             </StackPanel>
                         </Border>
                     </Grid>
                 </Border>
-                
-                <TextBlock Grid.Row="1" Text="{Binding Name}" Foreground="{StaticResource TextColor}" 
-                           FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" 
-                           TextWrapping="Wrap" MaxHeight="40" LineHeight="16" />
+
+                <TextBlock Grid.Row="1"
+                           Text="{Binding Name}"
+                           Foreground="{StaticResource TextColor}"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap"
+                           MaxHeight="36"
+                           LineHeight="16"
+                           TextTrimming="CharacterEllipsis"/>
+                <TextBlock Grid.Row="2"
+                           Text="{Binding Platform}"
+                           Foreground="{StaticResource TextSecondary}"
+                           FontSize="9"
+                           Margin="0,4,0,0"
+                           HorizontalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"/>
             </Grid>
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
-                    <Setter TargetName="GlowEffect" Property="Opacity" Value="1" />
-                    <Setter TargetName="PlayOverlay" Property="Opacity" Value="1" />
-                    <Setter TargetName="ImageBorder" Property="Background" Value="#252525" />
+                    <Setter TargetName="PlayOverlay" Property="Opacity" Value="1"/>
+                    <Setter TargetName="ImageBorder" Property="BorderBrush" Value="{StaticResource AccentColor}"/>
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
 
-        <!-- Premium Slider Style (NVIDIA Red) -->
+        <!-- Translucent slider with a violet-to-cyan accent -->
         <Style x:Key="NvidiaSliderStyle" TargetType="Slider">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -90,9 +126,9 @@
                                     <Thumb Width="18" Height="18">
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
-                                                <Ellipse Fill="White" Stroke="{StaticResource AccentColor}" StrokeThickness="3">
+                                                <Ellipse Fill="#FFF5F0FF" Stroke="{StaticResource AccentColor}" StrokeThickness="3">
                                                     <Ellipse.Effect>
-                                                        <DropShadowEffect Color="#E60012" BlurRadius="8" ShadowDepth="0" Opacity="0.6"/>
+                                                        <DropShadowEffect Color="#B7A1FF" BlurRadius="14" ShadowDepth="0" Opacity="0.6"/>
                                                     </Ellipse.Effect>
                                                 </Ellipse>
                                             </ControlTemplate>
@@ -148,12 +184,12 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#252525"/>
+                                <Setter Property="Background" Value="#40B7A1FF"/>
                                 <Setter Property="BorderBrush" Value="{StaticResource AccentColor}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="{StaticResource AccentColor}"/>
-                                <Setter Property="Foreground" Value="Black"/>
+                                <Setter Property="Background" Value="{StaticResource AccentGradientBrush}"/>
+                                <Setter Property="Foreground" Value="#FF302642"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -161,14 +197,14 @@
             </Setter>
         </Style>
 
-        <!-- Sidebar Navigation Button Style (Industrial) -->
         <Style x:Key="NavButtonStyle" TargetType="RadioButton">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Width" Value="80" />
-            <Setter Property="Height" Value="80" />
-            <Setter Property="FontSize" Value="28" />
-            <Setter Property="Foreground" Value="#505050" />
+            <Setter Property="Width" Value="74" />
+            <Setter Property="Height" Value="70" />
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
+            <Setter Property="FontSize" Value="21" />
+            <Setter Property="Foreground" Value="#FFC2B8D7" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -184,11 +220,11 @@
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter Property="Foreground" Value="{StaticResource AccentColor}" />
                                 <Setter TargetName="Indicator" Property="Visibility" Value="Visible" />
-                                <Setter TargetName="Border" Property="Background" Value="#1A1A1A" />
+                                <Setter TargetName="Border" Property="Background" Value="#38B7A1FF" />
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="#151515" />
-                                <Setter Property="Foreground" Value="#AAAAAA" />
+                                <Setter TargetName="Border" Property="Background" Value="#25D8CEFF" />
+                                <Setter Property="Foreground" Value="#FFF5F0FF" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>

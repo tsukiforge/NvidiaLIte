@@ -17,7 +17,7 @@
         <Storyboard x:Key="ShowSidebar">
             <DoubleAnimation Storyboard.TargetName="SidebarBorder" 
                              Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
-                             From="-650" To="0" Duration="0:0:0.4">
+                             From="-780" To="0" Duration="0:0:0.35">
                 <DoubleAnimation.EasingFunction>
                     <CubicEase EasingMode="EaseOut"/> 
                 </DoubleAnimation.EasingFunction>
@@ -30,7 +30,7 @@
         <Storyboard x:Key="HideSidebar">
             <DoubleAnimation Storyboard.TargetName="SidebarBorder" 
                              Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
-                             To="-650" Duration="0:0:0.3">
+                             To="-780" Duration="0:0:0.25">
                 <DoubleAnimation.EasingFunction>
                     <CubicEase EasingMode="EaseIn"/>
                 </DoubleAnimation.EasingFunction>
@@ -43,6 +43,40 @@
         <Storyboard x:Key="FadeInContent">
             <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.3"/>
         </Storyboard>
+
+        <Style x:Key="GlassActionButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#28D8CEFF"/>
+            <Setter Property="Foreground" Value="{StaticResource TextColor}"/>
+            <Setter Property="BorderBrush" Value="#45E5D8FF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="14,10"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="11"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#55B7A1FF"/>
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{StaticResource AccentColor}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Window.Triggers>
@@ -54,13 +88,13 @@
     <!-- Main Root Grid -->
     <Grid x:Name="MainRootGrid">
         <!-- Full Screen Semi-Transparent Background (Glass effect like Game Bar) -->
-        <Grid Background="#22000000" MouseLeftButtonDown="Background_MouseLeftButtonDown" />
+        <Grid Background="#301A1830" MouseLeftButtonDown="Background_MouseLeftButtonDown" />
 
         <!-- Notification/Flash Effect for Screenshots -->
         <Border x:Name="FlashBorder" Background="White" Visibility="Collapsed" IsHitTestVisible="False" Opacity="0.5" Panel.ZIndex="100"/>
         
         <!-- Image Preview Modal -->
-        <Grid x:Name="ImagePreviewModal" Visibility="Collapsed" Background="#F2000000" Panel.ZIndex="90">
+        <Grid x:Name="ImagePreviewModal" Visibility="Collapsed" Background="#ED211B34" Panel.ZIndex="90">
             <Grid MouseLeftButtonDown="ClosePreview_Click">
                 <Image x:Name="FullImageDisplay" Margin="100" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality">
                     <Image.Effect>
@@ -95,10 +129,13 @@
         </Grid>
 
         <!-- Sidebar Container (Left Side) -->
-        <Border x:Name="SidebarBorder" HorizontalAlignment="Left" Width="650" Background="{StaticResource BackgroundColor}" 
-                BorderBrush="{StaticResource AccentColor}" BorderThickness="0,0,2,0">
+        <Border x:Name="SidebarBorder" HorizontalAlignment="Left" Width="760" Background="{StaticResource GlassPanelBrush}"
+                BorderBrush="#70E6D9FF" BorderThickness="1" CornerRadius="0,28,28,0">
+            <Border.Effect>
+                <DropShadowEffect Color="#A78BFA" BlurRadius="38" ShadowDepth="0" Opacity="0.35"/>
+            </Border.Effect>
             <Border.RenderTransform>
-                <TranslateTransform X="-650"/>
+                <TranslateTransform X="-780"/>
             </Border.RenderTransform>
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -107,12 +144,12 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Navigation Sidebar (Leftmost) -->
-                <Border Grid.Column="0" Background="#0D0D0D" BorderBrush="#222222" BorderThickness="0,0,1,0">
-                    <StackPanel Margin="0,80,0,0">
-                        <RadioButton x:Name="DashboardTab" Style="{StaticResource NavButtonStyle}" IsChecked="True" Content="🎮" Tag="Dashboard" Click="Tab_Click" />
-                        <RadioButton x:Name="GalleryTab" Style="{StaticResource NavButtonStyle}" Content="🖼️" Tag="Gallery" Click="Tab_Click" />
-                        <RadioButton x:Name="FiltersTab" Style="{StaticResource NavButtonStyle}" Content="🎨" Tag="Filters" Click="Tab_Click" />
-                        <RadioButton x:Name="SettingsTab" Style="{StaticResource NavButtonStyle}" Content="⚙️" Tag="Settings" Click="Tab_Click" />
+                <Border Grid.Column="0" Background="#76231F38" BorderBrush="#38E6D9FF" BorderThickness="0,0,1,0">
+                    <StackPanel Margin="0,70,0,0">
+                        <RadioButton x:Name="DashboardTab" Style="{StaticResource NavButtonStyle}" IsChecked="True" Content="&#xE7FC;" Tag="Dashboard" ToolTip="Game" Click="Tab_Click" />
+                        <RadioButton x:Name="GalleryTab" Style="{StaticResource NavButtonStyle}" Content="&#xEB9F;" Tag="Gallery" ToolTip="Galeri" Click="Tab_Click" />
+                        <RadioButton x:Name="FiltersTab" Style="{StaticResource NavButtonStyle}" Content="&#xE790;" Tag="Filters" ToolTip="Filter" Click="Tab_Click" />
+                        <RadioButton x:Name="SettingsTab" Style="{StaticResource NavButtonStyle}" Content="&#xE713;" Tag="Settings" ToolTip="Pengaturan" Click="Tab_Click" />
                     </StackPanel>
                 </Border>
 
@@ -124,7 +161,7 @@
                     </Grid.RowDefinitions>
 
                     <!-- Header -->
-                    <Grid Grid.Row="0" Margin="30,45,25,20">
+                    <Grid Grid.Row="0" Margin="36,34,32,18">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="NVIDIA" Foreground="{StaticResource AccentColor}" FontSize="22" FontWeight="Black" VerticalAlignment="Center"/>
                             <TextBlock x:Name="HeaderText" Text=" LITE" Foreground="{StaticResource TextColor}" FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center"/>
@@ -146,8 +183,8 @@
                                     </Setter>
                                     <Style.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#1AFFFFFF"/>
-                                            <Setter Property="Foreground" Value="White"/>
+                                            <Setter Property="Background" Value="#38B7A1FF"/>
+                                            <Setter Property="Foreground" Value="{StaticResource TextColor}"/>
                                         </Trigger>
                                     </Style.Triggers>
                                 </Style>
@@ -156,7 +193,7 @@
                         </Button>
                     </Grid>
                     
-                    <Separator Grid.Row="0" VerticalAlignment="Bottom" Background="#1AFFFFFF" Margin="30,0,25,0" Height="1"/>
+                    <Separator Grid.Row="0" VerticalAlignment="Bottom" Background="#38E6D9FF" Margin="30,0,25,0" Height="1"/>
 
                     <!-- Content Views -->
                     <Grid Grid.Row="1" x:Name="ContentView">
@@ -179,12 +216,12 @@
                                 </Grid.RowDefinitions>
 
                                 <!-- Search Bar -->
-                                <Border Grid.Row="0" Margin="10,0,15,20" Background="#1AFFFFFF" CornerRadius="4" BorderBrush="#33FFFFFF" BorderThickness="1">
+                                <Border Grid.Row="0" Margin="8,0,12,20" Background="#2BCBC0E8" CornerRadius="14" BorderBrush="#48E6D9FF" BorderThickness="1">
                                     <Grid>
-                                        <TextBlock Text="🔍 Filter games..." Foreground="#66FFFFFF" Margin="10,0" VerticalAlignment="Center" IsHitTestVisible="False" 
+                                        <TextBlock Text="Cari game yang terdeteksi..." Foreground="#779AA7B5" Margin="14,0" VerticalAlignment="Center" IsHitTestVisible="False"
                                                    Visibility="{Binding Text.IsEmpty, ElementName=SearchBox, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                                        <TextBox x:Name="SearchBox" Background="Transparent" BorderThickness="0" Foreground="White" 
-                                                 Padding="10,8" VerticalContentAlignment="Center" CaretBrush="{StaticResource AccentColor}"
+                                        <TextBox x:Name="SearchBox" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextColor}"
+                                                 Padding="14,12" VerticalContentAlignment="Center" CaretBrush="{StaticResource AccentColor}"
                                                  TextChanged="SearchBox_TextChanged"/>
                                     </Grid>
                                 </Border>
@@ -211,23 +248,41 @@
                                 </ListBox>
 
                                 <StackPanel Grid.Row="1" x:Name="NoGamesFoundText" VerticalAlignment="Center" HorizontalAlignment="Center" Visibility="Collapsed">
-                                    <TextBlock Text="🎮" FontSize="48" Foreground="#222222" HorizontalAlignment="Center" Margin="0,0,0,10"/>
-                                    <TextBlock Text="NO GAMES FOUND" Foreground="#444444" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="◈" FontSize="46" Foreground="#66B7A1FF" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                                    <TextBlock x:Name="NoGamesTitleText" Text="Belum ada game terdeteksi" Foreground="{StaticResource TextColor}" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Name="NoGamesHintText" Text="Pindai library Steam, Epic, GOG, EA, atau folder Games." Foreground="{StaticResource TextSecondary}" FontSize="11" Margin="0,6,0,0" HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </Grid>
 
-                            <Border Grid.Row="1" Background="#05FFFFFF" Padding="30">
-                                <Button Content="RE-SCAN GAMES" 
-                                        x:Name="ScanButton" 
-                                        Click="ScanButton_Click"
-                                        Height="55" FontSize="14" FontWeight="Bold" Cursor="Hand"
-                                        Background="{StaticResource AccentColor}" Foreground="Black" BorderThickness="0">
-                                    <Button.Resources>
-                                        <Style TargetType="Border">
-                                            <Setter Property="CornerRadius" Value="4" />
-                                        </Style>
-                                    </Button.Resources>
-                                </Button>
+                            <Border Grid.Row="1" Background="#282E2946" Padding="20,14">
+                                <StackPanel>
+                                    <WrapPanel>
+                                        <Button Content="↻  PINDAI GAME"
+                                                x:Name="ScanButton"
+                                                Click="ScanButton_Click"
+                                                Style="{StaticResource GlassActionButtonStyle}"
+                                                Margin="0,0,8,8"/>
+                                        <Button x:Name="ScreenshotButton"
+                                                Content="▣  SCREENSHOT"
+                                                Click="ScreenshotButton_Click"
+                                                Style="{StaticResource GlassActionButtonStyle}"
+                                                Margin="0,0,8,8"/>
+                                        <Button x:Name="RecordButton"
+                                                Content="●  MULAI REKAM"
+                                                Click="RecordButton_Click"
+                                                Style="{StaticResource GlassActionButtonStyle}"
+                                                Margin="0,0,8,8"/>
+                                        <Button Content="FOLDER REKAMAN"
+                                                Click="OpenMediaFolder_Click"
+                                                Style="{StaticResource GlassActionButtonStyle}"
+                                                Margin="0,0,0,8"/>
+                                    </WrapPanel>
+                                    <TextBlock x:Name="CaptureStatusText"
+                                               Text="Screenshot: Pictures\NvidiaLite\Screenshots  •  Video: Videos\NvidiaLite\Recordings"
+                                               Foreground="{StaticResource TextSecondary}"
+                                               FontSize="10"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
                             </Border>
                         </Grid>
 
@@ -237,7 +292,7 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Text="SCREENSHOTS" Foreground="{StaticResource TextColor}" FontSize="12" FontWeight="Bold" Margin="0,0,0,25" Opacity="0.5"/>
+                            <TextBlock Grid.Row="0" Text="SCREENSHOT" Foreground="{StaticResource TextColor}" FontSize="12" FontWeight="Bold" Margin="0,0,0,25" Opacity="0.85"/>
                             
                             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                                 <ItemsControl x:Name="GalleryItemsControl">
@@ -248,19 +303,19 @@
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Margin="0,0,10,10" Width="170" Height="100" CornerRadius="8" Background="#111111" BorderBrush="#222222" BorderThickness="1" ClipToBounds="True" Cursor="Hand"
+                                            <Border Margin="0,0,10,10" Width="170" Height="100" CornerRadius="14" Background="#30CFC2E8" BorderBrush="#42E6D9FF" BorderThickness="1" ClipToBounds="True" Cursor="Hand"
                                                     MouseLeftButtonDown="GalleryItem_PreviewClick">
                                                 <Border.ContextMenu>
                                                     <ContextMenu>
-                                                        <MenuItem Header="Open Image" Click="OpenImage_Click" 
-                                                                  Tag="{Binding Path, RelativeSource={RelativeSource AncestorType=ContextMenu}, Path=PlacementTarget.DataContext.Path}"/>
-                                                        <MenuItem Header="Copy to Clipboard" Click="CopyImage_Click"
-                                                                  Tag="{Binding Path, RelativeSource={RelativeSource AncestorType=ContextMenu}, Path=PlacementTarget.DataContext.Path}"/>
-                                                        <MenuItem Header="Save As..." Click="SaveImageAs_Click"
-                                                                  Tag="{Binding Path, RelativeSource={RelativeSource AncestorType=ContextMenu}, Path=PlacementTarget.DataContext.Path}"/>
+                                                        <MenuItem Header="Buka gambar" Click="OpenImage_Click"
+                                                                  Tag="{Binding PlacementTarget.DataContext.Path, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                                        <MenuItem Header="Salin gambar" Click="CopyImage_Click"
+                                                                  Tag="{Binding PlacementTarget.DataContext.Path, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                                        <MenuItem Header="Simpan sebagai..." Click="SaveImageAs_Click"
+                                                                  Tag="{Binding PlacementTarget.DataContext.Path, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                                         <Separator/>
-                                                        <MenuItem Header="Delete" Click="DeleteImage_Click"
-                                                                  Tag="{Binding Path, RelativeSource={RelativeSource AncestorType=ContextMenu}, Path=PlacementTarget.DataContext.Path}"/>
+                                                        <MenuItem Header="Hapus" Click="DeleteImage_Click"
+                                                                  Tag="{Binding PlacementTarget.DataContext.Path, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                                     </ContextMenu>
                                                 </Border.ContextMenu>
                                                 <Image Source="{Binding Source}" Stretch="UniformToFill" />
@@ -270,39 +325,39 @@
                                 </ItemsControl>
                             </ScrollViewer>
                             
-                            <TextBlock Grid.Row="1" Text="No screenshots found." x:Name="NoGalleryText" Visibility="Visible" Foreground="#444444" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            <TextBlock Grid.Row="1" Text="Belum ada screenshot. Tekan F10 untuk mengambil gambar." x:Name="NoGalleryText" Visibility="Visible" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
                         </Grid>
 
                         <!-- Filters View -->
                         <Grid x:Name="FiltersView" Visibility="Collapsed" Margin="30">
                             <ScrollViewer VerticalScrollBarVisibility="Auto">
                                 <StackPanel>
-                                    <TextBlock Text="SCREEN FILTERS" Foreground="{StaticResource TextColor}" FontSize="12" FontWeight="Bold" Margin="0,0,0,5" Opacity="0.5"/>
-                                    <TextBlock Text="Applies a real-time color overlay on top of your screen." Foreground="#555555" FontSize="11" Margin="0,0,0,10"/>
+                                    <TextBlock Text="FILTER LAYAR" Foreground="{StaticResource TextColor}" FontSize="12" FontWeight="Bold" Margin="0,0,0,5" Opacity="0.75"/>
+                                    <TextBlock Text="Lapisan warna transparan diterapkan ke seluruh desktop." Foreground="{StaticResource TextSecondary}" FontSize="11" Margin="0,0,0,10"/>
                                     
                                     <!-- Preset Descriptions -->
-                                    <Border Background="#0D1A1A1A" BorderBrush="#1AFFFFFF" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,0,20">
+                                    <Border Background="#302E2946" BorderBrush="#42E6D9FF" BorderThickness="1" CornerRadius="14" Padding="14" Margin="0,0,0,20">
                                         <StackPanel>
-                                            <TextBlock Foreground="#AAAAAA" FontSize="10" TextWrapping="Wrap">
-                                                <Run FontWeight="Bold" Foreground="#76B900">🌟 VIVID</Run> - Warm orange tint, boost saturation
+                                            <TextBlock Foreground="{StaticResource TextSecondary}" FontSize="10" TextWrapping="Wrap">
+                                                <Run FontWeight="Bold" Foreground="#FFB7A1FF">🌟 VIVID</Run> - Nuansa hangat
                                             </TextBlock>
-                                            <TextBlock Foreground="#AAAAAA" FontSize="10" TextWrapping="Wrap" Margin="0,3,0,0">
-                                                <Run FontWeight="Bold" Foreground="#007AFF">❄️ COOL</Run> - Cool blue tint for focus
+                                            <TextBlock Foreground="{StaticResource TextSecondary}" FontSize="10" TextWrapping="Wrap" Margin="0,3,0,0">
+                                                <Run FontWeight="Bold" Foreground="#FF8DE7F5">❄️ COOL</Run> - Nuansa biru dingin
                                             </TextBlock>
-                                            <TextBlock Foreground="#AAAAAA" FontSize="10" TextWrapping="Wrap" Margin="0,3,0,0">
-                                                <Run FontWeight="Bold" Foreground="#FF9500">🌙 NIGHT</Run> - Red tint, reduce blue light (eye comfort)
+                                            <TextBlock Foreground="{StaticResource TextSecondary}" FontSize="10" TextWrapping="Wrap" Margin="0,3,0,0">
+                                                <Run FontWeight="Bold" Foreground="#FF9500">🌙 NIGHT</Run> - Nuansa merah untuk malam
                                             </TextBlock>
-                                            <TextBlock Foreground="#AAAAAA" FontSize="10" TextWrapping="Wrap" Margin="0,3,0,0">
-                                                <Run FontWeight="Bold" Foreground="#888888">🎬 CINEMA</Run> - Dark overlay, cinematic look
+                                            <TextBlock Foreground="{StaticResource TextSecondary}" FontSize="10" TextWrapping="Wrap" Margin="0,3,0,0">
+                                                <Run FontWeight="Bold" Foreground="#FFD4BFFF">🎬 CINEMA</Run> - Lapisan gelap
                                             </TextBlock>
-                                            <TextBlock Foreground="#AAAAAA" FontSize="10" TextWrapping="Wrap" Margin="0,3,0,0">
-                                                <Run FontWeight="Bold" Foreground="#FFCC00">📖 READING</Run> - Sepia warm tone for comfortable reading
+                                            <TextBlock Foreground="{StaticResource TextSecondary}" FontSize="10" TextWrapping="Wrap" Margin="0,3,0,0">
+                                                <Run FontWeight="Bold" Foreground="#FFFFA9D6">📖 READING</Run> - Nuansa sepia
                                             </TextBlock>
                                         </StackPanel>
                                     </Border>
 
                                     <!-- Preset Buttons -->
-                                    <TextBlock Text="PRESETS" Foreground="#FFAAAAAA" FontSize="11" FontWeight="Bold" Margin="0,0,0,15"/>
+                                    <TextBlock Text="PRESET" Foreground="{StaticResource TextSecondary}" FontSize="11" FontWeight="Bold" Margin="0,0,0,15"/>
                                     <WrapPanel Margin="0,0,0,25">
                                         <Button Content="OFF" Tag="None" Click="FilterPreset_Click" Style="{StaticResource FilterPresetButtonStyle}" Margin="0,0,8,8"/>
                                         <Button Content="🌟 VIVID" Tag="Vivid" Click="FilterPreset_Click" Style="{StaticResource FilterPresetButtonStyle}" Margin="0,0,8,8"/>
@@ -312,25 +367,25 @@
                                         <Button Content="📖 READING" Tag="Reading" Click="FilterPreset_Click" Style="{StaticResource FilterPresetButtonStyle}" Margin="0,0,8,8"/>
                                     </WrapPanel>
 
-                                    <Separator Background="#1AFFFFFF" Height="1" Margin="0,0,0,25"/>
+                                    <Separator Background="#38E6D9FF" Height="1" Margin="0,0,0,25"/>
 
                                     <!-- Info Box -->
-                                    <Border Background="#0D1A1A00" BorderBrush="#33FFCC00" BorderThickness="1" CornerRadius="4" Padding="12,10" Margin="0,0,0,25">
+                                    <Border Background="#282E2946" BorderBrush="#55B7A1FF" BorderThickness="1" CornerRadius="14" Padding="14,12" Margin="0,0,0,25">
                                         <StackPanel>
-                                            <TextBlock Foreground="#FFFFCC00" FontSize="11" FontWeight="Bold" Margin="0,0,0,5">
+                                            <TextBlock Foreground="{StaticResource AccentCyan}" FontSize="11" FontWeight="Bold" Margin="0,0,0,5">
                                                 ℹ️ CARA KERJA FILTER
                                             </TextBlock>
-                                            <TextBlock Foreground="#CCCCCC" FontSize="10" TextWrapping="Wrap">
-                                                Filter ini bekerja sebagai overlay transparan di atas SEMUA aplikasi (game, browser, desktop). Tidak mengubah output GPU, hanya menambah lapisan warna di atas layar.
+                                            <TextBlock Foreground="{StaticResource TextSecondary}" FontSize="10" TextWrapping="Wrap">
+                                                Filter ini tampil di atas desktop dan aplikasi. Filter tidak mengubah output GPU.
                                             </TextBlock>
                                         </StackPanel>
                                     </Border>
 
                                     <!-- Custom Tint -->
-                                    <TextBlock Text="CUSTOM TINT" Foreground="#FFAAAAAA" FontSize="11" FontWeight="Bold" Margin="0,0,0,15"/>
+                                    <TextBlock Text="WARNA KUSTOM" Foreground="{StaticResource TextSecondary}" FontSize="11" FontWeight="Bold" Margin="0,0,0,15"/>
 
                                     <!-- Color Swatches -->
-                                    <TextBlock Text="Color" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
+                                    <TextBlock Text="Warna" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="0,0,0,10"/>
                                     <WrapPanel Margin="0,0,0,20">
                                         <Border x:Name="SwatchRed"    Width="32" Height="32" CornerRadius="16" Background="#FFFF3B30" Margin="0,0,8,0" Cursor="Hand" MouseLeftButtonDown="Swatch_Click" Tag="#FFFF3B30"/>
                                         <Border x:Name="SwatchOrange" Width="32" Height="32" CornerRadius="16" Background="#FFFF9500" Margin="0,0,8,0" Cursor="Hand" MouseLeftButtonDown="Swatch_Click" Tag="#FFFF9500"/>
@@ -342,7 +397,7 @@
                                     </WrapPanel>
 
                                     <!-- Opacity Slider -->
-                                    <TextBlock Text="Intensity" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
+                                    <TextBlock Text="Intensitas" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="0,0,0,10"/>
                                     <Grid Margin="0,0,0,25">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -356,10 +411,10 @@
                                     </Grid>
 
                                     <!-- Active Filter Status -->
-                                    <Border Background="#0DFFFFFF" CornerRadius="4" Padding="15,12" BorderBrush="#1AFFFFFF" BorderThickness="1">
+                                    <Border Background="#302E2946" CornerRadius="12" Padding="15,12" BorderBrush="#42E6D9FF" BorderThickness="1">
                                         <StackPanel Orientation="Horizontal">
-                                            <Ellipse x:Name="FilterStatusDot" Width="8" Height="8" Fill="#555555" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                            <TextBlock x:Name="FilterStatusText" Text="No filter active" Foreground="#888888" FontSize="12" VerticalAlignment="Center"/>
+                                            <Ellipse x:Name="FilterStatusDot" Width="8" Height="8" Fill="#FF9690AA" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                            <TextBlock x:Name="FilterStatusText" Text="Filter tidak aktif" Foreground="{StaticResource TextSecondary}" FontSize="12" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Border>
                                 </StackPanel>
@@ -370,10 +425,10 @@
                         <Grid x:Name="SettingsView" Visibility="Collapsed" Margin="30">
                             <ScrollViewer VerticalScrollBarVisibility="Auto">
                                 <StackPanel>
-                                    <TextBlock Text="SETTINGS" Foreground="{StaticResource TextColor}" FontSize="12" FontWeight="Bold" Margin="0,0,0,25" Opacity="0.5"/>
+                                    <TextBlock Text="PENGATURAN" Foreground="{StaticResource TextColor}" FontSize="12" FontWeight="Bold" Margin="0,0,0,25" Opacity="0.75"/>
                                     
                                     <!-- SYSTEM CONTROL -->
-                                    <TextBlock Text="SYSTEM" Foreground="#FFAAAAAA" FontSize="11" FontWeight="Bold" Margin="0,0,0,15"/>
+                                    <TextBlock Text="SISTEM" Foreground="{StaticResource TextSecondary}" FontSize="11" FontWeight="Bold" Margin="0,0,0,15"/>
                                     
 
 
@@ -383,11 +438,11 @@
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <Border Width="40" Height="40" Background="#1DFFFFFF" CornerRadius="20" HorizontalAlignment="Left">
+                                        <Border Width="40" Height="40" Background="#32B7A1FF" CornerRadius="20" HorizontalAlignment="Left">
                                             <TextBlock Text="☀️" VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="18"/>
                                         </Border>
                                         <StackPanel Grid.Column="1" Margin="15,0,0,0" VerticalAlignment="Center">
-                                            <TextBlock Text="Screen Brightness" Foreground="White" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                            <TextBlock Text="Kecerahan layar" Foreground="{StaticResource TextColor}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,5"/>
                                             <Slider x:Name="BrightnessSlider" Minimum="0" Maximum="100" Value="100" 
                                                     ValueChanged="BrightnessSlider_ValueChanged"
                                                     Style="{StaticResource NvidiaSliderStyle}"
@@ -401,11 +456,11 @@
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <Border Width="40" Height="40" Background="#1DFFFFFF" CornerRadius="20" HorizontalAlignment="Left">
+                                        <Border Width="40" Height="40" Background="#328DE7F5" CornerRadius="20" HorizontalAlignment="Left">
                                             <TextBlock Text="🔊" VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="18"/>
                                         </Border>
                                         <StackPanel Grid.Column="1" Margin="15,0,0,0" VerticalAlignment="Center">
-                                            <TextBlock Text="System Volume" Foreground="White" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                            <TextBlock Text="Volume sistem" Foreground="{StaticResource TextColor}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,5"/>
                                             <Slider x:Name="VolumeSlider" Minimum="0" Maximum="100" Value="50" 
                                                     ValueChanged="VolumeSlider_ValueChanged"
                                                     Style="{StaticResource NvidiaSliderStyle}"
@@ -413,74 +468,123 @@
                                         </StackPanel>
                                     </Grid>
 
-                                    <!-- WiFi -->
-                                    <Grid Margin="0,0,0,20">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Border Width="40" Height="40" Background="#1DFFFFFF" CornerRadius="20" HorizontalAlignment="Left">
-                                            <TextBlock Text="📡" VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="18"/>
-                                        </Border>
-                                        <StackPanel Grid.Column="1" Margin="15,0,0,0" VerticalAlignment="Center">
-                                            <TextBlock Text="Wi-Fi Connection" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
-                                            <ComboBox x:Name="WifiComboBox" SelectionChanged="WifiComboBox_SelectionChanged"
-                                                      Background="#111" BorderThickness="1" BorderBrush="#333" Foreground="#CCCCCC"
-                                                      Margin="0,5,0,0" FontSize="11" Width="200" HorizontalAlignment="Left"/>
-                                            <PasswordBox x:Name="WifiPasswordBox" Visibility="Collapsed" 
-                                                         Background="#111" BorderBrush="#333" Foreground="White"
-                                                         Width="200" Height="25" Margin="0,5,0,0" HorizontalAlignment="Left"/>
+                                    <Border Background="#252E2946" BorderBrush="#3AE6D9FF" BorderThickness="1" CornerRadius="16" Padding="16" Margin="0,0,0,20">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="Wi-Fi dikelola Windows" Foreground="{StaticResource TextColor}" FontSize="13" FontWeight="SemiBold"/>
+                                                <TextBlock Text="Kredensial dan jaringan tersimpan tidak diubah oleh aplikasi."
+                                                           Foreground="{StaticResource TextSecondary}" FontSize="10" TextWrapping="Wrap" Margin="0,5,12,0"/>
+                                            </StackPanel>
+                                            <Button Grid.Column="1"
+                                                    Content="BUKA PENGATURAN"
+                                                    Click="ManageWifi_Click"
+                                                    Style="{StaticResource GlassActionButtonStyle}"
+                                                    VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </Border>
+
+                                    <Border Background="#252E2946" BorderBrush="#3AE6D9FF" BorderThickness="1" CornerRadius="16" Padding="16" Margin="0,0,0,20">
+                                        <StackPanel>
+                                            <TextBlock Text="NOTIFIKASI" Foreground="{StaticResource TextSecondary}" FontSize="10" FontWeight="Bold" Margin="0,0,0,10"/>
+                                            <CheckBox x:Name="DndToggle"
+                                                      Content="Jangan ganggu"
+                                                      Foreground="{StaticResource TextColor}"
+                                                      FontSize="13"
+                                                      Checked="DoNotDisturb_Checked"
+                                                      Unchecked="DoNotDisturb_Unchecked"/>
+                                            <TextBlock Text="Toast aplikasi disembunyikan saat mode ini aktif."
+                                                       Foreground="{StaticResource TextSecondary}"
+                                                       FontSize="10"
+                                                       Margin="0,5,0,0"/>
                                         </StackPanel>
-                                        <StackPanel Grid.Column="2" VerticalAlignment="Bottom">
-                                            <Button x:Name="WifiConnectBtn" Content="CONNECT" Click="ConnectWifi_Click"
-                                                    Visibility="Collapsed" Background="{StaticResource AccentColor}" Foreground="Black" 
-                                                    FontSize="10" FontWeight="Bold" Padding="10,5" BorderThickness="0" Cursor="Hand" Margin="0,0,0,5">
-                                                <Button.Resources>
-                                                    <Style TargetType="Border">
-                                                        <Setter Property="CornerRadius" Value="4"/>
-                                                    </Style>
-                                                </Button.Resources>
-                                            </Button>
-                                            <Button Content="MANAGE" Click="ManageWifi_Click"
-                                                    Background="#1AFFFFFF" Foreground="White" FontSize="10" FontWeight="Bold"
-                                                    Padding="10,5" BorderThickness="0" Cursor="Hand">
-                                                <Button.Resources>
-                                                    <Style TargetType="Border">
-                                                        <Setter Property="CornerRadius" Value="4"/>
-                                                    </Style>
-                                                </Button.Resources>
-                                            </Button>
+                                    </Border>
+
+                                    <Border Background="#252E2946" BorderBrush="#3AE6D9FF" BorderThickness="1" CornerRadius="16" Padding="16" Margin="0,0,0,20">
+                                        <StackPanel>
+                                            <TextBlock Text="PEREKAMAN LAYAR" Foreground="{StaticResource TextColor}" FontSize="13" FontWeight="SemiBold"/>
+                                            <TextBlock Text="Video layar 30 FPS tanpa audio. Membutuhkan ffmpeg.exe (tidak dibundel agar aplikasi tetap ringan)."
+                                                       Foreground="{StaticResource TextSecondary}" FontSize="10" TextWrapping="Wrap" Margin="0,5,0,10"/>
+                                            <TextBlock x:Name="FfmpegPathText"
+                                                       Text="FFmpeg: cari otomatis melalui PATH"
+                                                       Foreground="{StaticResource TextSecondary}"
+                                                       FontSize="10"
+                                                       TextWrapping="Wrap"
+                                                       Margin="0,0,0,10"/>
+                                            <Button Content="PILIH ffmpeg.exe"
+                                                    Click="ChooseFfmpeg_Click"
+                                                    Style="{StaticResource GlassActionButtonStyle}"
+                                                    HorizontalAlignment="Left"/>
                                         </StackPanel>
-                                    </Grid>
+                                    </Border>
+
+                                    <Border Background="#252E2946" BorderBrush="#3AE6D9FF" BorderThickness="1" CornerRadius="16" Padding="16" Margin="0,0,0,20">
+                                        <StackPanel>
+                                            <TextBlock Text="SPOTIFY" Foreground="{StaticResource TextColor}" FontSize="13" FontWeight="SemiBold"/>
+                                            <TextBlock Text="Kontrol lewat Web API memerlukan access token OAuth dengan scope user-modify-playback-state dan akun Premium. Token hanya disimpan di memori sampai aplikasi ditutup."
+                                                       Foreground="{StaticResource TextSecondary}" FontSize="10" TextWrapping="Wrap" Margin="0,5,0,10"/>
+                                            <PasswordBox x:Name="SpotifyTokenBox"
+                                                         Background="#20101822"
+                                                         BorderBrush="#28FFFFFF"
+                                                         Foreground="{StaticResource TextColor}"
+                                                         Padding="10,8"
+                                                         Margin="0,0,0,8"/>
+                                            <Button Content="GUNAKAN TOKEN"
+                                                    Click="ApplySpotifyToken_Click"
+                                                    Style="{StaticResource GlassActionButtonStyle}"
+                                                    HorizontalAlignment="Left"
+                                                    Margin="0,0,0,8"/>
+                                            <TextBlock x:Name="SpotifyStatusText"
+                                                       Text="Token belum dimasukkan"
+                                                       Foreground="{StaticResource TextSecondary}"
+                                                       FontSize="10"
+                                                       Margin="0,0,0,8"/>
+                                            <WrapPanel>
+                                                <Button Content="▶ PUTAR"
+                                                        Click="SpotifyPlay_Click"
+                                                        Style="{StaticResource GlassActionButtonStyle}"
+                                                        Margin="0,0,8,0"/>
+                                                <Button Content="Ⅱ JEDA"
+                                                        Click="SpotifyPause_Click"
+                                                        Style="{StaticResource GlassActionButtonStyle}"
+                                                        Margin="0,0,8,0"/>
+                                                <Button Content="NEXT ↗"
+                                                        Click="SpotifyNext_Click"
+                                                        Style="{StaticResource GlassActionButtonStyle}"/>
+                                            </WrapPanel>
+                                        </StackPanel>
+                                    </Border>
 
                                     <Separator Background="#1AFFFFFF" Height="1" Margin="0,0,0,25"/>
 
                                     <!-- HOTKEYS -->
-                                    <TextBlock Text="SHORTCUTS" Foreground="#FFAAAAAA" FontSize="11" FontWeight="Bold" Margin="0,0,0,15"/>
+                                    <TextBlock Text="SHORTCUT" Foreground="{StaticResource TextSecondary}" FontSize="11" FontWeight="Bold" Margin="0,0,0,15"/>
 
-                                    <TextBlock Text="Overlay Global Hotkey" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
+                                    <TextBlock Text="Shortcut overlay" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="0,0,0,10"/>
                                     <Grid Margin="0,0,0,20">
-                                        <Border Background="#0DFFFFFF" Padding="15" CornerRadius="4" BorderBrush="#1AFFFFFF" BorderThickness="1">
-                                            <TextBlock x:Name="OverlayHotkeyText" Text="Alt + Z" Foreground="White" FontWeight="Bold" FontSize="14"/>
+                                        <Border Background="#302E2946" Padding="15" CornerRadius="12" BorderBrush="#42E6D9FF" BorderThickness="1">
+                                            <TextBlock x:Name="OverlayHotkeyText" Text="Alt + Z" Foreground="{StaticResource TextColor}" FontWeight="Bold" FontSize="14"/>
                                         </Border>
-                                        <Button x:Name="ChangeOverlayBtn" Content="CHANGE" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"
+                                        <Button x:Name="ChangeOverlayBtn" Content="UBAH" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"
                                                 Background="Transparent" Foreground="{StaticResource AccentColor}" BorderThickness="0" FontWeight="Bold" FontSize="11"
                                                 Click="ChangeOverlayHotkey_Click" Cursor="Hand"/>
                                     </Grid>
                                     
-                                    <TextBlock Text="Screenshot Hotkey" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
+                                    <TextBlock Text="Shortcut screenshot" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="0,0,0,10"/>
                                     <Grid Margin="0,0,0,30">
-                                        <Border Background="#0DFFFFFF" Padding="15" CornerRadius="4" BorderBrush="#1AFFFFFF" BorderThickness="1">
-                                            <TextBlock x:Name="ScreenshotHotkeyText" Text="F10" Foreground="White" FontWeight="Bold" FontSize="14"/>
+                                        <Border Background="#302E2946" Padding="15" CornerRadius="12" BorderBrush="#42E6D9FF" BorderThickness="1">
+                                            <TextBlock x:Name="ScreenshotHotkeyText" Text="F10" Foreground="{StaticResource TextColor}" FontWeight="Bold" FontSize="14"/>
                                         </Border>
-                                        <Button x:Name="ChangeScreenshotBtn" Content="CHANGE" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"
+                                        <Button x:Name="ChangeScreenshotBtn" Content="UBAH" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"
                                                 Background="Transparent" Foreground="{StaticResource AccentColor}" BorderThickness="0" FontWeight="Bold" FontSize="11"
                                                 Click="ChangeScreenshotHotkey_Click" Cursor="Hand"/>
                                     </Grid>
 
-                                    <TextBlock Text="Screenshots are saved to: Pictures/Screenshots" Foreground="#555555" FontSize="10" Margin="5,0,0,0"/>
-                                    <CheckBox Content="Auto-save Screen Captures" Foreground="White" IsChecked="True" Margin="0,15,0,0" FontSize="13"/>
+                                    <TextBlock Text="Screenshot: Pictures\NvidiaLite\Screenshots" Foreground="{StaticResource TextSecondary}" FontSize="10" Margin="5,0,0,0"/>
+                                    <TextBlock Text="Video: Videos\NvidiaLite\Recordings" Foreground="{StaticResource TextSecondary}" FontSize="10" Margin="5,5,0,0"/>
                                 </StackPanel>
                             </ScrollViewer>
                         </Grid>

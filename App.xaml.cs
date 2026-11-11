@@ -8,12 +8,22 @@ namespace NvidiaCi
     {
         private NotifyIcon? _notifyIcon;
         private OverlayWindow? _overlayWindow;
+        private ToolStripMenuItem? _overlayMenuItem;
+        private ToolStripMenuItem? _screenshotMenuItem;
+        private ToolStripMenuItem? _dndMenuItem;
+        private UserSettingsStore? _settingsStore;
         private static System.Threading.Mutex? _mutex;
+        private bool _ownsMutex;
+        private bool _updatingDndMenu;
+
+        public UserSettings Settings { get; private set; } = new();
+        public ToastNotificationService Notifications { get; } = new();
 
         protected override void OnStartup(StartupEventArgs e)
-        {            
+        {
             // Multiple instance prevention
             _mutex = new System.Threading.Mutex(true, "NvidiaCiMutex", out bool createdNew);
+            _ownsMutex = createdNew;
             if (!createdNew)
             {
                 System.Windows.MessageBox.Show("Aplikasi sudah berjalan.", "NVIDIA Lite", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -21,98 +31,143 @@ namespace NvidiaCi
                 return;
             }
 
-            this.DispatcherUnhandledException += (s, args) => {
-                System.Diagnostics.Debug.WriteLine($"UNHANDLED ERROR: {args.Exception.Message}\n\nStack: {args.Exception.StackTrace}");
-                args.Handled = true;
-            };
-
             base.OnStartup(e);
+            _settingsStore = new UserSettingsStore();
+            Settings = _settingsStore.Load();
+            Notifications.IsDoNotDisturb = Settings.DoNotDisturb;
 
-            // 1. Buat instance jendela overlay tapi jangan tampilkan
-            try {
+            try
+            {
                 _overlayWindow = new OverlayWindow();
-            } catch (Exception ex) {
-                System.Diagnostics.Debug.WriteLine($"CRASH AT INIT: {ex.Message}\n{ex.InnerException?.Message}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Overlay initialization failed: {ex}");
+                System.Windows.MessageBox.Show(
+                    $"NVIDIA Lite gagal dimulai:\n{ex.Message}",
+                    "NVIDIA Lite",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
                 ShutdownApp();
                 return;
             }
 
-            // 2. Setup NotifyIcon (System Tray) with robust icon loading
             _notifyIcon = new NotifyIcon();
             _notifyIcon.Text = "NVIDIA Lite";
-            
-            try 
+
+            try
             {
                 string iconPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "icon.ico");
                 if (System.IO.File.Exists(iconPath))
-                {
                     _notifyIcon.Icon = new System.Drawing.Icon(iconPath);
-                }
                 else
-                {
-                    // Try relative path as fallback
-                    _notifyIcon.Icon = new System.Drawing.Icon("Assets/icon.ico");
-                }
+                    _notifyIcon.Icon = System.Drawing.SystemIcons.Application;
             }
             catch (Exception ex)
             {
-                // Fallback to system icon if custom icon fails
                 System.Diagnostics.Debug.WriteLine($"Failed to load icon: {ex.Message}");
                 _notifyIcon.Icon = System.Drawing.SystemIcons.Application;
             }
-            
             _notifyIcon.Visible = true;
 
-            // 3. Show welcome notification
             ShowWelcomeNotification();
-
-            // 3. Show welcome notification
-            ShowWelcomeNotification();
-
-            // 4. Tambahkan event handler untuk double-click
             _notifyIcon.DoubleClick += (s, args) => ToggleOverlay();
 
-            // 4. Buat menu konteks (klik kanan)
             var contextMenu = new ContextMenuStrip();
-            contextMenu.Items.Add("Show/Hide Sidebar (Alt+Z)", null, (s, args) => ToggleOverlay());
-            contextMenu.Items.Add("-"); // Separator
+            _overlayMenuItem = new ToolStripMenuItem();
+            _overlayMenuItem.Click += (s, args) => ToggleOverlay();
+            _screenshotMenuItem = new ToolStripMenuItem();
+            _screenshotMenuItem.Click += (s, args) => _overlayWindow?.TakeScreenshot();
+            UpdateHotkeyMenuLabels();
+            contextMenu.Items.Add(_overlayMenuItem);
+            contextMenu.Items.Add(_screenshotMenuItem);
+            _dndMenuItem = new ToolStripMenuItem("Jangan ganggu")
+            {
+                Checked = Settings.DoNotDisturb,
+                CheckOnClick = true
+            };
+            _dndMenuItem.CheckedChanged += (s, args) =>
+            {
+                if (!_updatingDndMenu)
+                    SetDoNotDisturb(_dndMenuItem.Checked);
+            };
+            contextMenu.Items.Add(_dndMenuItem);
+            contextMenu.Items.Add(new ToolStripSeparator());
             contextMenu.Items.Add("Exit", null, (s, args) => ShutdownApp());
             _notifyIcon.ContextMenuStrip = contextMenu;
 
-            // Penting: Hentikan aplikasi dari shutdown otomatis
             this.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        }
+
+        public void SetDoNotDisturb(bool enabled)
+        {
+            Settings.DoNotDisturb = enabled;
+            Notifications.IsDoNotDisturb = enabled;
+            _overlayWindow?.UpdateDoNotDisturbToggle(enabled);
+            if (_dndMenuItem != null && _dndMenuItem.Checked != enabled)
+            {
+                _updatingDndMenu = true;
+                try
+                {
+                    _dndMenuItem.Checked = enabled;
+                }
+                finally
+                {
+                    _updatingDndMenu = false;
+                }
+            }
+
+            try
+            {
+                _settingsStore?.Save(Settings);
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(
+                    $"Pengaturan Jangan Ganggu gagal disimpan:\n{ex.Message}",
+                    "NVIDIA Lite",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+
+            if (!enabled)
+                Notifications.Show("Notifikasi aktif", "Toast NVIDIA Lite akan ditampilkan kembali.");
+        }
+
+        public void SaveSettings()
+        {
+            if (_settingsStore == null)
+                throw new InvalidOperationException("Pengaturan aplikasi belum siap.");
+
+            _settingsStore.Save(Settings);
+        }
+
+        public void UpdateHotkeyMenuLabels()
+        {
+            if (_overlayMenuItem != null)
+                _overlayMenuItem.Text = $"Tampilkan/sembunyikan overlay (Alt+{Settings.OverlayHotkey})";
+            if (_screenshotMenuItem != null)
+                _screenshotMenuItem.Text = $"Ambil screenshot ({Settings.ScreenshotHotkey})";
         }
 
         private void ShowWelcomeNotification()
         {
-            if (_notifyIcon == null) return;
-
-            // Check if this is first run
             string appDataPath = System.IO.Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), 
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "NvidiaCi");
             string flagFile = System.IO.Path.Combine(appDataPath, ".first_run");
-
             bool isFirstRun = !System.IO.File.Exists(flagFile);
-
             if (isFirstRun)
             {
-                // Create flag file
-                if (!System.IO.Directory.Exists(appDataPath))
-                    System.IO.Directory.CreateDirectory(appDataPath);
-                System.IO.File.WriteAllText(flagFile, DateTime.Now.ToString());
+                System.IO.Directory.CreateDirectory(appDataPath);
+                System.IO.File.WriteAllText(flagFile, DateTime.Now.ToString("O"));
             }
 
-            // Show notification (always show, but different message for first run)
-            string title = isFirstRun ? "🎮 Selamat Datang di NVIDIA Lite!" : "🎮 NVIDIA Lite";
-            string message = isFirstRun 
-                ? "Tekan Alt+Z untuk membuka overlay.\nF10 untuk screenshot.\n\nSelamat bermain! 🚀"
-                : "Aplikasi berjalan di background.\nTekan Alt+Z untuk membuka overlay.";
-
-            _notifyIcon.BalloonTipTitle = title;
-            _notifyIcon.BalloonTipText = message;
-            _notifyIcon.BalloonTipIcon = ToolTipIcon.Info;
-            _notifyIcon.ShowBalloonTip(5000); // Show for 5 seconds
+            Notifications.Show(
+                isFirstRun ? "Selamat datang di NVIDIA Lite" : "NVIDIA Lite aktif",
+                isFirstRun
+                    ? "Alt+Z membuka overlay • F10 mengambil screenshot."
+                    : "Aplikasi berjalan di background. Tekan Alt+Z untuk membuka overlay.");
         }
 
         public async void ToggleOverlay()
@@ -131,13 +186,17 @@ namespace NvidiaCi
 
         protected override void OnExit(ExitEventArgs e)
         {
-            _notifyIcon?.Dispose(); // Bersihkan ikon saat aplikasi ditutup
+            _overlayWindow?.Dispose();
+            Notifications.Dispose();
+            _notifyIcon?.Dispose();
+            if (_ownsMutex)
+                _mutex?.ReleaseMutex();
+            _mutex?.Dispose();
             base.OnExit(e);
         }
 
         private void ShutdownApp()
         {
-            // Ini akan memicu OnExit dan menutup aplikasi dengan benar
             System.Windows.Application.Current.Shutdown();
         }
     }

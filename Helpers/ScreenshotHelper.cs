@@ -10,37 +10,32 @@ namespace NvidiaCi
     {
         public static string CaptureScreen()
         {
-            try
+            string screenshotFolder = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+                "NvidiaLite",
+                "Screenshots");
+            Directory.CreateDirectory(screenshotFolder);
+
+            Rectangle bounds = SystemInformation.VirtualScreen;
+            if (bounds.Width <= 0 || bounds.Height <= 0)
+                throw new InvalidOperationException("Windows did not report a valid desktop area.");
+
+            string fileName = $"Screenshot_{DateTime.Now:yyyyMMdd_HHmmss_fff}.png";
+            string fullPath = Path.Combine(screenshotFolder, fileName);
+            int collision = 1;
+            while (File.Exists(fullPath))
             {
-                string screenshotFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "Screenshots");
-                if (!Directory.Exists(screenshotFolder))
-                {
-                    Directory.CreateDirectory(screenshotFolder);
-                }
-
-                string fileName = $"Screenshot_{DateTime.Now:yyyyMMdd_HHmmss}.png";
-                string fullPath = Path.Combine(screenshotFolder, fileName);
-
-                var primaryScreen = Screen.PrimaryScreen;
-                if (primaryScreen == null) return string.Empty;
-
-                Rectangle bounds = primaryScreen.Bounds;
-                using (Bitmap bitmap = new Bitmap(bounds.Width, bounds.Height))
-                {
-                    using (Graphics g = Graphics.FromImage(bitmap))
-                    {
-                        g.CopyFromScreen(Point.Empty, Point.Empty, bounds.Size);
-                    }
-                    bitmap.Save(fullPath, ImageFormat.Png);
-                }
-
-                return fullPath;
+                fileName = $"Screenshot_{DateTime.Now:yyyyMMdd_HHmmss_fff}_{collision++}.png";
+                fullPath = Path.Combine(screenshotFolder, fileName);
             }
-            catch (Exception ex)
+
+            using var bitmap = new Bitmap(bounds.Width, bounds.Height);
+            using (Graphics graphics = Graphics.FromImage(bitmap))
             {
-                System.Diagnostics.Debug.WriteLine($"Failed to capture screenshot: {ex.Message}");
-                return string.Empty;
+                graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size);
             }
+            bitmap.Save(fullPath, ImageFormat.Png);
+            return fullPath;
         }
     }
 }

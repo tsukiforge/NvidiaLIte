@@ -2,6 +2,19 @@
 
 Semua pembaruan penting untuk project NVIDIA LITE akan dicatat di sini.
 
+## [v3.0.0] - 2026-11-11
+
+### ✨ Glass UI dan pengalaman baru
+
+- **Glass visual baru:** panel transparan bergradasi indigo-violet dengan aksen lavender dan cyan, termasuk kartu game, navigasi, tombol, dan toast.
+- **Notifikasi dan Jangan Ganggu:** toast glass untuk status dan error; preferensi DND tersimpan dan tersedia dari overlay serta system tray.
+- **Library game lebih akurat:** scan library Steam dan manifest Epic, serta registry GOG/EA; tampilkan nama/platform dan ikon executable yang ditemukan.
+- **Screenshot dan galeri:** tangkap desktop virtual multi-monitor, optimalkan pratinjau galeri, dan tampilkan lokasi simpan yang jelas.
+- **Perekaman layar:** opsi FFmpeg eksternal untuk merekam 30 FPS ke folder Videos NVIDIA Lite; FFmpeg tidak dibundel.
+- **Spotify Web API:** kontrol putar/jeda/berikutnya opsional dengan access token OAuth sementara; tidak mengklaim playback tanpa otorisasi.
+- **Pengaturan lebih andal:** simpan shortcut dan pengaturan lokal, serta laporkan kontrol perangkat yang tidak didukung.
+- **Project cleanup:** hapus aset Bootstrap `wwwroot` yang tidak digunakan aplikasi WPF dan perbarui README.
+
 ## [v2.0.0] - 2025-01-XX
 
 ### 🎨 Major UI Redesign - NVIDIA Industrial Red Theme

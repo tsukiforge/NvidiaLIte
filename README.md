@@ -1,63 +1,50 @@
-# 🎮 NVIDIA LITE (Beta) - Solusi Overlay Ringan Buat Kamu!
+# NVIDIA Lite
 
-Halo! Selamat datang di **NVIDIA LITE**. Project ini saya buat karena pengen punya overlay yang super ringan, nggak ribet, tapi tetep kelihatan mewah pas lagi main game. Ini terinspirasi dari gaya _GeForce Now_ dan _Windows Game Bar_, tapi versi lebih "diet" dan estetik.
+NVIDIA Lite adalah overlay gaming Windows berbasis WPF yang ringan, dengan panel glass transparan bernuansa violet dan cyan, navigasi cepat, serta notifikasi glass.
 
-> ⚠️ **Catatan Penting**: Aplikasi ini statusnya masih **BETA**. Jadi kalau kamu nemu _bug_ atau ada yang aneh, maklumin ya! Saya masih terus poles biar makin mantap. Atau Bikin Issue di repo kami Terima kasih
+## Fitur
 
----
+- **Library game:** membaca Steam (`libraryfolders.vdf` dan `appmanifest`), manifest Epic Games, registry GOG/EA, dan folder lokal `C:\Games`, `D:\Games`, serta `E:\Games`. Nama/platform mengikuti data launcher jika tersedia. Game hanya bisa dibuka dari executable yang ditemukan di folder instalasinya; aplikasi tidak menebak program lain saat tidak ada game.
+- **Ikon game:** diekstrak dari executable game dan disimpan sebagai cache lokal.
+- **Screenshot:** `F10` mengambil seluruh desktop virtual (termasuk monitor tambahan) ke folder Pictures.
+- **Galeri:** pratinjau screenshot, salin, simpan sebagai, buka, dan hapus. Gambar diproses dengan ukuran pratinjau agar galeri tetap ringan.
+- **Perekaman layar:** memakai FFmpeg eksternal jika tersedia. Rekaman H.264 30 FPS disimpan tanpa audio ke folder Videos. Pilih `ffmpeg.exe` melalui Pengaturan jika tidak ditemukan otomatis dari `PATH`.
+- **Filter:** preset dan warna kustom; intensitas slider berlaku pada filter aktif.
+- **Notifikasi:** toast glass untuk status capture, perekaman, dan error. Mode Jangan Ganggu menyembunyikan toast NVIDIA Lite dan bisa diubah dari pengaturan atau menu system tray.
+- **Spotify:** kontrol putar/jeda/berikutnya opsional melalui Spotify Web API. Token OAuth tidak disimpan dan harus dimasukkan ulang setelah aplikasi ditutup. Spotify memerlukan scope `user-modify-playback-state`, perangkat aktif, dan akun Premium untuk kontrol playback.
+- **Kontrol sistem:** volume, brightness yang didukung Windows WMI, dan tautan ke pengaturan Wi-Fi Windows. Jika perangkat tidak mendukung kontrol tertentu, aplikasi menonaktifkannya dan menjelaskan alasannya.
 
-## ✨ Kenapa Harus Pake Ini?
+## Persyaratan dan menjalankan
 
-- **Tampilan Premium & Transparan**: Nggak nutupin layar game kamu. Efek kacanya bikin betah dilihat, apalagi di sisi kiri ala mac-style.
-- **Animasi Super Halus**: Pas kamu pencet **Alt + Z**, sidebarnya muncul pelan-pelan (slide-in), nggak kaku kayak aplikasi jadul.
-- **Dashboard Gaming Rapi**: Penataan game-nya kotak-kotak (grid) rapi. Nggak ada lagi daftar memanjang yang ngebosenin.
-- **Auto-Filter Cerdas**: Saya udah setting biar aplikasi ini pinter bedain mana game beneran dan mana file sampah sistem. Jadi yang tampil cuma yang kamu butuhin aja!
-- **Screenshot Sat-Set**: Cukup pencet **F10**, layar bakalan kedip putih (flash) tanda gambar udah diambil. Hasilnya langsung masuk folder Pictures kamu.
-- **Klik Kanan Galeri**: Bisa langsung intip hasil screenshot, hapus yang jelek, atau simpan ke tempat lain cuma lewat klik kanan.
+- Windows 10/11 64-bit.
+- .NET 9 SDK untuk build dari source.
+- FFmpeg hanya diperlukan untuk perekaman layar.
 
----
+```powershell
+dotnet restore
+dotnet build
+dotnet run
+```
 
-## 🚀 Cara Pasang & Mainkan
+## Shortcut
 
-Aplikasi ini masih butuh sedikit "sentuhan tangan" buat jalaninnya.
+- **Alt + Z:** buka/tutup overlay.
+- **F10:** ambil screenshot.
 
-### Prasyarat
+Shortcut dapat diubah dari Pengaturan dan disimpan lokal.
 
-- Kamu butuh **.NET 9.0 SDK** terpasang di Windows kamu.
-- Pastikan Windows kamu 10 atau 11 (64-bit).
+## Lokasi file
 
-### Langkah-langkah (Contribution)
+- **Data, pengaturan, dan cache ikon:** `%LOCALAPPDATA%\NvidiaCi`
+- **Screenshot:** folder `NvidiaLite\Screenshots` di Known Folder Pictures Windows.
+- **Rekaman:** folder `NvidiaLite\Recordings` di Known Folder Videos Windows.
 
-1. **Download atau Clone** folder ini ke komputer kamu.
-2. Buka **Terminal/PowerShell** di folder project tersebut.
-3. Jalankan:
-   ```powershell
-   dotnet build
-   ```
-4. Kalau udah beres, jalanin deh:
-   ```powershell
-   dotnet run
-   ```
+Token Spotify hanya berada di memori proses dan tidak ditulis ke file pengaturan.
 
----
+## Gambar dokumentasi versi sebelumnya
 
-## ⌨️ Shortcut Rahasia
+Gambar di bawah berasal dari tampilan sebelum perombakan UI.
 
-- **Alt + Z**: Buat buka/tutup jendela rahasia (Overlay).
-- **F10**: Buat jepret layar (Screenshot) secara instan.
-
-## 📁 Di mana file-nya disimpan?
-
-- **Data Game**: Tersimpan aman di folder `%AppData%/Local/NvidiaCi`.
-- **Hasil Foto**: Bisa kamu cek di folder `Pictures/Screenshots`.
-
----
-## 🖼️ Contoh Screenshot
-
-> <img src="doc/image.png" width="350px" style="margin-bottom: 10px"> 
-> <img src="doc/image copy.png" width="350px" style="margin-bottom: 10px"> 
-> <img src="doc/image copy 2.png" width="350px" style="margin-bottom: 10px"> 
-
----
-
-_Dibuat dengan ❤️ oleh Zi._
+<img src="doc/image.png" width="350" alt="Tampilan NVIDIA Lite versi sebelumnya">
+<img src="doc/image copy.png" width="350" alt="Galeri NVIDIA Lite versi sebelumnya">
+<img src="doc/image copy 2.png" width="350" alt="Pengaturan NVIDIA Lite versi sebelumnya">
