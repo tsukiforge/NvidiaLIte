@@ -3,25 +3,25 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:NvidiaCi">
     <Application.Resources>
-        <SolidColorBrush x:Key="AccentColor" Color="#FFB7A1FF" />
-        <SolidColorBrush x:Key="AccentHover" Color="#FFD4BFFF" />
-        <SolidColorBrush x:Key="AccentCyan" Color="#FF8DE7F5" />
-        <SolidColorBrush x:Key="AccentPink" Color="#FFFFA9D6" />
-        <SolidColorBrush x:Key="BackgroundColor" Color="#D927203F" />
-        <SolidColorBrush x:Key="CardBackground" Color="#35C6B9E8" />
-        <SolidColorBrush x:Key="SecondaryBackgroundColor" Color="#CE26213C" />
-        <SolidColorBrush x:Key="TextColor" Color="#FFF5F0FF" />
-        <SolidColorBrush x:Key="TextSecondary" Color="#FFCBC3DC" />
-        <SolidColorBrush x:Key="BorderColor" Color="#52E8DFFF" />
+        <SolidColorBrush x:Key="AccentColor" Color="#FFE8ECEF" />
+        <SolidColorBrush x:Key="AccentHover" Color="#FFFFFFFF" />
+        <SolidColorBrush x:Key="AccentCyan" Color="#FFD2D7DB" />
+        <SolidColorBrush x:Key="AccentPink" Color="#FFFFFFFF" />
+        <SolidColorBrush x:Key="BackgroundColor" Color="#D908090A" />
+        <SolidColorBrush x:Key="CardBackground" Color="#35333335" />
+        <SolidColorBrush x:Key="SecondaryBackgroundColor" Color="#CE111214" />
+        <SolidColorBrush x:Key="TextColor" Color="#FFF5F5F5" />
+        <SolidColorBrush x:Key="TextSecondary" Color="#FFB8B8B8" />
+        <SolidColorBrush x:Key="BorderColor" Color="#52FFFFFF" />
         <LinearGradientBrush x:Key="GlassPanelBrush" StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#E52B2444" Offset="0"/>
-            <GradientStop Color="#D92C3554" Offset="0.52"/>
-            <GradientStop Color="#E5203049" Offset="1"/>
+            <GradientStop Color="#E5131415" Offset="0"/>
+            <GradientStop Color="#D91D1F21" Offset="0.52"/>
+            <GradientStop Color="#E50D0E0F" Offset="1"/>
         </LinearGradientBrush>
         <LinearGradientBrush x:Key="AccentGradientBrush" StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#FFB7A1FF" Offset="0"/>
-            <GradientStop Color="#FF9DABFF" Offset="0.55"/>
-            <GradientStop Color="#FF8DE7F5" Offset="1"/>
+            <GradientStop Color="#FFFFFFFF" Offset="0"/>
+            <GradientStop Color="#FFD7DADD" Offset="0.55"/>
+            <GradientStop Color="#FFF5F5F5" Offset="1"/>
         </LinearGradientBrush>
 
         <DataTemplate x:Key="GameItemTemplate">
@@ -44,13 +44,13 @@
                                    VerticalAlignment="Center"
                                    HorizontalAlignment="Center"
                                    FontSize="46"
-                                   Foreground="#55D5C4FF"/>
+                                   Foreground="#66FFFFFF"/>
                         <Image Source="{Binding IconPath}"
                                Margin="12"
                                Stretch="Uniform"
                                RenderOptions.BitmapScalingMode="Fant"/>
                         <Border x:Name="PlayOverlay"
-                                Background="#C02A2440"
+                                Background="#C0080808"
                                 CornerRadius="15"
                                 Opacity="0">
                             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
@@ -59,7 +59,7 @@
                                            FontSize="30"
                                            HorizontalAlignment="Center"/>
                                 <TextBlock Text="MAIN"
-                                           Foreground="#FFF5F0FF"
+                                           Foreground="#FFF5F5F5"
                                            FontSize="10"
                                            HorizontalAlignment="Center"
                                            Margin="0,5,0,0"
@@ -96,7 +96,7 @@
             </DataTemplate.Triggers>
         </DataTemplate>
 
-        <!-- Translucent slider with a violet-to-cyan accent -->
+        <!-- Translucent monochrome slider -->
         <Style x:Key="NvidiaSliderStyle" TargetType="Slider">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -126,9 +126,9 @@
                                     <Thumb Width="18" Height="18">
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
-                                                <Ellipse Fill="#FFF5F0FF" Stroke="{StaticResource AccentColor}" StrokeThickness="3">
+                                                <Ellipse Fill="#FFF5F5F5" Stroke="{StaticResource AccentColor}" StrokeThickness="3">
                                                     <Ellipse.Effect>
-                                                        <DropShadowEffect Color="#B7A1FF" BlurRadius="14" ShadowDepth="0" Opacity="0.6"/>
+                                                        <DropShadowEffect Color="#FFFFFF" BlurRadius="14" ShadowDepth="0" Opacity="0.45"/>
                                                     </Ellipse.Effect>
                                                 </Ellipse>
                                             </ControlTemplate>
@@ -184,12 +184,12 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#40B7A1FF"/>
+                                <Setter Property="Background" Value="#40FFFFFF"/>
                                 <Setter Property="BorderBrush" Value="{StaticResource AccentColor}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter Property="Background" Value="{StaticResource AccentGradientBrush}"/>
-                                <Setter Property="Foreground" Value="#FF302642"/>
+                                <Setter Property="Foreground" Value="#FF111214"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -203,8 +203,8 @@
             <Setter Property="Width" Value="74" />
             <Setter Property="Height" Value="70" />
             <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
-            <Setter Property="FontSize" Value="21" />
-            <Setter Property="Foreground" Value="#FFC2B8D7" />
+            <Setter Property="FontSize" Value="24" />
+            <Setter Property="Foreground" Value="#FFBFC2C5" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -220,11 +220,11 @@
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter Property="Foreground" Value="{StaticResource AccentColor}" />
                                 <Setter TargetName="Indicator" Property="Visibility" Value="Visible" />
-                                <Setter TargetName="Border" Property="Background" Value="#38B7A1FF" />
+                                <Setter TargetName="Border" Property="Background" Value="#38FFFFFF" />
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="#25D8CEFF" />
-                                <Setter Property="Foreground" Value="#FFF5F0FF" />
+                                <Setter TargetName="Border" Property="Background" Value="#25FFFFFF" />
+                                <Setter Property="Foreground" Value="#FFFFFFFF" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>

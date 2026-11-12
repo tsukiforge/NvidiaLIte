@@ -29,6 +29,8 @@ namespace NvidiaCi
             ScanEpicGames(maxResults);
             ScanGogGames(maxResults);
             ScanEaGames(maxResults);
+            ScanMinecraft(maxResults);
+            ScanRoblox(maxResults);
             ScanManualLibraries(maxResults);
 
             return _games
@@ -218,6 +220,110 @@ namespace NvidiaCi
             }
         }
 
+        private void ScanMinecraft(int maxResults)
+        {
+            if (_games.Count >= maxResults) return;
+
+            string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            string roamingAppData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            string? launcher = new[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Minecraft Launcher", "MinecraftLauncher.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Minecraft Launcher", "MinecraftLauncher.exe"),
+                Path.Combine(localAppData, "Programs", "Minecraft Launcher", "MinecraftLauncher.exe"),
+                Path.Combine(localAppData, "Microsoft", "WindowsApps", "Minecraft.exe")
+            }.FirstOrDefault(File.Exists);
+
+            if (launcher != null)
+            {
+                AddGame("Minecraft", Path.GetDirectoryName(launcher), Path.GetFileName(launcher), "Minecraft");
+                return;
+            }
+
+            bool hasGameData = Directory.Exists(Path.Combine(roamingAppData, ".minecraft")) ||
+                Directory.Exists(Path.Combine(localAppData, "Packages", "Microsoft.4297127D64EC6_8wekyb3d8bbwe"));
+            if (hasGameData || IsProtocolRegistered("minecraft"))
+                AddProtocolGame("Minecraft", "minecraft://", "Minecraft", maxResults);
+        }
+
+        private void ScanRoblox(int maxResults)
+        {
+            if (_games.Count >= maxResults) return;
+
+            string versionsDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Roblox",
+                "Versions");
+            string? player = EnumerateDirectories(versionsDirectory)
+                .OrderByDescending(GetDirectoryLastWriteTimeUtc)
+                .Select(directory => Path.Combine(directory, "RobloxPlayerBeta.exe"))
+                .FirstOrDefault(File.Exists);
+            string? launchUri = IsProtocolRegistered("roblox")
+                ? "roblox://"
+                : IsProtocolRegistered("roblox-player")
+                    ? "roblox-player:"
+                    : null;
+
+            if (player != null)
+            {
+                AddGame("Roblox", Path.GetDirectoryName(player), Path.GetFileName(player), "Roblox", launchUri);
+                return;
+            }
+
+            if (launchUri != null)
+                AddProtocolGame("Roblox", launchUri, "Roblox", maxResults);
+        }
+
+        private void AddProtocolGame(string name, string launchUri, string platform, int maxResults)
+        {
+            if (_games.Count >= maxResults || !_gamePaths.Add(launchUri))
+                return;
+
+            _games.Add(new GameItem
+            {
+                Name = name,
+                LaunchUri = launchUri,
+                Platform = platform
+            });
+        }
+
+        private static bool IsProtocolRegistered(string scheme)
+        {
+            foreach ((RegistryHive hive, RegistryView view) in GetRegistryLocations())
+            {
+                try
+                {
+                    using var baseKey = RegistryKey.OpenBaseKey(hive, view);
+                    using var protocolKey = baseKey.OpenSubKey($@"SOFTWARE\Classes\{scheme}");
+                    if (protocolKey == null)
+                        continue;
+
+                    if (protocolKey.GetValue("URL Protocol") != null)
+                        return true;
+
+                    using var commandKey = protocolKey.OpenSubKey(@"shell\open\command");
+                    if (!string.IsNullOrWhiteSpace(commandKey?.GetValue(null) as string))
+                        return true;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Could not check {scheme} protocol registration: {ex.Message}");
+                }
+            }
+
+            return false;
+        }
+
+        private static DateTime GetDirectoryLastWriteTimeUtc(string path)
+        {
+            try { return Directory.GetLastWriteTimeUtc(path); }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Could not read game version directory timestamp ({path}): {ex.Message}");
+                return DateTime.MinValue;
+            }
+        }
+
         private void ScanInstallFolders(string root, string platform, int maxResults)
         {
             foreach (string directory in EnumerateDirectories(root))
@@ -227,7 +333,7 @@ namespace NvidiaCi
             }
         }
 
-        private void AddGame(string name, string? installPath, string? relativeExecutable, string platform)
+        private void AddGame(string name, string? installPath, string? relativeExecutable, string platform, string? launchUri = null)
         {
             if (string.IsNullOrWhiteSpace(installPath))
                 return;
@@ -252,6 +358,7 @@ namespace NvidiaCi
             {
                 Name = name.Trim(),
                 Path = executable,
+                LaunchUri = launchUri,
                 Platform = platform,
                 IconPath = ExtractIcon(executable)
             });

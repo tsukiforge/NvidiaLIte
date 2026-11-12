@@ -18,7 +18,6 @@ namespace NvidiaCi
         private const int HOTKEY_OVERLAY_ID = 9000;
         private const int HOTKEY_SCREENSHOT_ID = 9001;
         private readonly GameDataManager _dataManager = new GameDataManager();
-        private readonly ScreenRecordingService _recordingService = new();
         private readonly SpotifyControlService _spotifyService = new();
         private List<GameItem> _games = new();
         private bool _disposed;
@@ -27,15 +26,12 @@ namespace NvidiaCi
         private bool _isChangingScreenshotHotkey = false;
         private bool _isInitializingSettings;
         private bool _isSyncingControls;
-        private bool _isCustomTint;
         private bool _isCapturing;
         private int _visibilityTransitionVersion;
-        private System.Windows.Media.Animation.Storyboard? _activeVisibilityStoryboard;
         private System.Windows.Input.Key _tempOverlayKey = System.Windows.Input.Key.Z;
         private System.Windows.Input.Key _tempScreenshotKey = System.Windows.Input.Key.F10;
 
         private ScreenFilterWindow? _filterWindow;
-        private System.Windows.Media.Color _selectedTintColor = MediaColor.FromRgb(0xB7, 0xA1, 0xFF);
         private FilterPreset _activePreset = FilterPreset.None;
 
         public OverlayWindow()
@@ -61,8 +57,6 @@ namespace NvidiaCi
 
             _filterWindow = new ScreenFilterWindow();
             _filterWindow.Show();
-            _recordingService.RecordingStopped += OnRecordingStopped;
-
             this.Opacity = 0;
             this.Visibility = Visibility.Collapsed;
         }
@@ -70,13 +64,24 @@ namespace NvidiaCi
         public Task ShowAnimated()
         {
             _visibilityTransitionVersion++;
-            StopVisibilityTransition();
+            var sidebarTransform = (TranslateTransform)SidebarBorder.RenderTransform;
+            sidebarTransform.BeginAnimation(TranslateTransform.XProperty, null);
+            sidebarTransform.X = 0;
             PositionWindow();
-            this.Visibility = Visibility.Visible;
             this.Opacity = 1;
+            MainRootGrid.Opacity = 1;
 
-            _activeVisibilityStoryboard = (Storyboard)this.Resources["ShowSidebar"];
-            _activeVisibilityStoryboard.Begin(this, HandoffBehavior.SnapshotAndReplace, true);
+            if (IsLoaded)
+                this.Visibility = Visibility.Visible;
+            else
+                this.Show();
+
+            sidebarTransform.BeginAnimation(
+                TranslateTransform.XProperty,
+                new DoubleAnimation(-780, 0, TimeSpan.FromMilliseconds(320))
+                {
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                });
 
             this.Activate();
             this.Topmost = false;
@@ -89,19 +94,22 @@ namespace NvidiaCi
         public async Task HideAnimated()
         {
             int transitionVersion = ++_visibilityTransitionVersion;
-            StopVisibilityTransition();
-            _activeVisibilityStoryboard = (Storyboard)this.Resources["HideSidebar"];
-            _activeVisibilityStoryboard.Begin(this, HandoffBehavior.SnapshotAndReplace, true);
+            var sidebarTransform = (TranslateTransform)SidebarBorder.RenderTransform;
+            sidebarTransform.BeginAnimation(TranslateTransform.XProperty, null);
+            sidebarTransform.BeginAnimation(
+                TranslateTransform.XProperty,
+                new DoubleAnimation(sidebarTransform.X, -780, TimeSpan.FromMilliseconds(250))
+                {
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+                });
 
-            await Task.Delay(350);
+            await Task.Delay(250);
             if (transitionVersion == _visibilityTransitionVersion)
+            {
+                sidebarTransform.BeginAnimation(TranslateTransform.XProperty, null);
+                sidebarTransform.X = -780;
                 this.Visibility = Visibility.Collapsed;
-        }
-
-        private void StopVisibilityTransition()
-        {
-            _activeVisibilityStoryboard?.Stop(this);
-            _activeVisibilityStoryboard = null;
+            }
         }
 
         private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -110,16 +118,12 @@ namespace NvidiaCi
             {
                 _isInitializingSettings = true;
                 DndToggle.IsChecked = app.Settings.DoNotDisturb;
-                FfmpegPathText.Text = string.IsNullOrWhiteSpace(app.Settings.FfmpegPath)
-                    ? "FFmpeg: cari otomatis melalui PATH"
-                    : $"FFmpeg: {app.Settings.FfmpegPath}";
                 _isInitializingSettings = false;
             }
 
             LoadData();
             LoadGallery();
-            if (_games.Count == 0)
-                await RefreshGameListAsync();
+            await RefreshGameListAsync();
         }
 
         private void Tab_Click(object sender, RoutedEventArgs e)
@@ -595,103 +599,6 @@ namespace NvidiaCi
             await CaptureScreenshotAsync();
         }
 
-        private async void RecordButton_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                if (_recordingService.IsRecording)
-                {
-                    RecordButton.IsEnabled = false;
-                    await _recordingService.StopAsync();
-                    RecordButton.IsEnabled = true;
-                }
-                else
-                {
-                    string? ffmpegPath = (System.Windows.Application.Current as App)?.Settings.FfmpegPath;
-                    _recordingService.Start(ffmpegPath);
-                    RecordButton.Content = "■  BERHENTI REKAM";
-                    RecordButton.Foreground = new SolidColorBrush(MediaColor.FromRgb(255, 139, 139));
-                    CaptureStatusText.Text = $"Merekam ke: {_recordingService.RecordingPath}";
-                    ShowNotification("Perekaman dimulai", "Video disimpan di Videos\\NvidiaLite\\Recordings.");
-                }
-            }
-            catch (Exception ex)
-            {
-                RecordButton.IsEnabled = true;
-                ShowError("Perekaman gagal dimulai", ex.Message);
-            }
-        }
-
-        private void OnRecordingStopped(object? sender, RecordingStoppedEventArgs e)
-        {
-            Dispatcher.BeginInvoke(() =>
-            {
-                RecordButton.IsEnabled = true;
-                RecordButton.Content = "●  MULAI REKAM";
-                RecordButton.Foreground = (System.Windows.Media.Brush)FindResource("TextColor");
-
-                if (e.ExitCode == 0 && !string.IsNullOrWhiteSpace(e.Path) && File.Exists(e.Path))
-                {
-                    CaptureStatusText.Text = $"Rekaman tersimpan: {e.Path}";
-                    ShowNotification("Rekaman selesai", e.Path);
-                }
-                else
-                {
-                    string detail = string.IsNullOrWhiteSpace(e.Error) ? $"Kode keluar FFmpeg: {e.ExitCode}." : e.Error;
-                    CaptureStatusText.Text = "Perekaman berhenti karena terjadi kesalahan.";
-                    ShowError("Perekaman gagal", detail);
-                }
-            });
-        }
-
-        private void OpenMediaFolder_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                Directory.CreateDirectory(UserSettingsStore.RecordingDirectory);
-                Process.Start(new ProcessStartInfo(UserSettingsStore.RecordingDirectory)
-                {
-                    UseShellExecute = true
-                });
-            }
-            catch (Exception ex)
-            {
-                ShowError("Folder media gagal dibuka", ex.Message);
-            }
-        }
-
-        private void ChooseFfmpeg_Click(object sender, RoutedEventArgs e)
-        {
-            var dialog = new Microsoft.Win32.OpenFileDialog
-            {
-                Title = "Pilih FFmpeg executable",
-                Filter = "ffmpeg.exe|ffmpeg.exe|Executable (*.exe)|*.exe",
-                CheckFileExists = true
-            };
-
-            if (dialog.ShowDialog() != true)
-                return;
-
-            if (System.Windows.Application.Current is not App app)
-                return;
-
-            try
-            {
-                app.Settings.FfmpegPath = dialog.FileName;
-                app.SaveSettings();
-                FfmpegPathText.Text = $"FFmpeg: {dialog.FileName}";
-                ShowNotification("FFmpeg tersimpan", "Perekam siap digunakan.");
-            }
-            catch (Exception ex)
-            {
-                System.Windows.MessageBox.Show(
-                    $"Pengaturan FFmpeg gagal disimpan:\n{ex.Message}",
-                    "NVIDIA Lite",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-            }
-        }
-
         private void DoNotDisturb_Checked(object sender, RoutedEventArgs e) =>
             UpdateDoNotDisturb(true);
 
@@ -857,24 +764,29 @@ namespace NvidiaCi
         {
             if (GameListBox.SelectedItem is GameItem selectedGame)
             {
-                LaunchGame(selectedGame.Path);
+                LaunchGame(selectedGame);
                 GameListBox.SelectedItem = null;
             }
         }
 
-        private async void LaunchGame(string exePath)
+        private async void LaunchGame(GameItem game)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(exePath) || !File.Exists(exePath))
-                    throw new FileNotFoundException("Executable game tidak ditemukan.", exePath);
+                string launchTarget = game.LaunchUri ?? game.Path;
+                if (string.IsNullOrWhiteSpace(launchTarget) ||
+                    (game.LaunchUri == null && !File.Exists(launchTarget)))
+                    throw new FileNotFoundException("Executable game tidak ditemukan.", launchTarget);
 
-                Process.Start(new ProcessStartInfo
+                var startInfo = new ProcessStartInfo
                 {
-                    FileName = exePath,
-                    WorkingDirectory = System.IO.Path.GetDirectoryName(exePath),
+                    FileName = launchTarget,
                     UseShellExecute = true
-                });
+                };
+                if (game.LaunchUri == null)
+                    startInfo.WorkingDirectory = System.IO.Path.GetDirectoryName(game.Path);
+
+                Process.Start(startInfo);
                 await HideAnimated();
             }
             catch (Exception ex)
@@ -904,7 +816,6 @@ namespace NvidiaCi
             if (Enum.TryParse<FilterPreset>(btn.Tag?.ToString(), out var preset))
             {
                 _activePreset = preset;
-                _isCustomTint = false;
                 _filterWindow.ApplyFilter(preset, FilterOpacitySlider.Value);
                 _filterWindow.Topmost = true;
                 _filterWindow.Show();
@@ -916,41 +827,12 @@ namespace NvidiaCi
             }
         }
 
-        private void Swatch_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            if (sender is not Border border || _filterWindow == null) return;
-
-            var colorStr = border.Tag?.ToString();
-            if (colorStr == null) return;
-
-            try
-            {
-                _selectedTintColor = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(colorStr);
-                _activePreset = FilterPreset.None;
-                _isCustomTint = true;
-                _filterWindow.ApplyCustomTint(_selectedTintColor, FilterOpacitySlider.Value);
-                UpdateFilterStatus();
-            }
-            catch (Exception ex)
-            {
-                ShowError("Warna filter tidak valid", ex.Message);
-            }
-        }
-
         private void FilterOpacity_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (!this.IsLoaded || _filterWindow == null) return;
 
             FilterOpacityLabel.Text = $"{(int)e.NewValue}%";
-
-            if (_isCustomTint)
-            {
-                _filterWindow.ApplyCustomTint(_selectedTintColor, e.NewValue);
-            }
-            else
-            {
-                _filterWindow.ApplyFilter(_activePreset, e.NewValue);
-            }
+            _filterWindow.ApplyFilter(_activePreset, e.NewValue);
         }
 
         private void UpdateFilterStatus()
@@ -958,13 +840,7 @@ namespace NvidiaCi
             if (_filterWindow == null)
                 return;
 
-            if (_isCustomTint && FilterOpacitySlider.Value > 0)
-            {
-                FilterStatusDot.Fill = new SolidColorBrush(_selectedTintColor);
-                FilterStatusText.Text = "Warna kustom aktif";
-                FilterStatusText.Foreground = (System.Windows.Media.Brush)FindResource("TextColor");
-            }
-            else if (_activePreset == FilterPreset.None)
+            if (_activePreset == FilterPreset.None)
             {
                 FilterStatusDot.Fill = new SolidColorBrush(Colors.Gray);
                 FilterStatusText.Text = "Filter tidak aktif";
@@ -982,23 +858,22 @@ namespace NvidiaCi
             ApplyGameFilter();
         }
 
-        private async void Background_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        private async void MainRootGrid_PreviewMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            if (e.OriginalSource is Grid)
-            {
+            if (!SidebarBorder.IsMouseOver)
                 await HideAnimated();
-            }
         }
 
         private async void CloseButton_Click(object sender, RoutedEventArgs e) => await HideAnimated();
 
         public void PositionWindow()
         {
-            // Full Screen coverage
-            this.Left = 0;
-            this.Top = 0;
-            this.Width = SystemParameters.PrimaryScreenWidth;
-            this.Height = SystemParameters.PrimaryScreenHeight;
+            Rect workArea = SystemParameters.WorkArea;
+            this.Left = workArea.Left;
+            this.Top = workArea.Top;
+            this.Width = workArea.Width;
+            // Leave a clear edge for the Windows auto-hide taskbar trigger.
+            this.Height = Math.Min(workArea.Height, SystemParameters.PrimaryScreenHeight - 10);
             
             // Adjust Sidebar Width for Grid layout
             SidebarBorder.Width = 760;
@@ -1014,8 +889,6 @@ namespace NvidiaCi
                 return;
 
             _disposed = true;
-            _recordingService.RecordingStopped -= OnRecordingStopped;
-            _recordingService.Dispose();
             UnregisterGlobalHotkey();
             _filterWindow?.Close();
         }

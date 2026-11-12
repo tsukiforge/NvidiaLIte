@@ -46,13 +46,18 @@ namespace NvidiaCi
                 return games.FindAll(game =>
                     !string.IsNullOrWhiteSpace(game.Name) &&
                     !string.IsNullOrWhiteSpace(game.Platform) &&
-                    File.Exists(game.Path));
+                    (File.Exists(game.Path) || IsSupportedLaunchUri(game.LaunchUri)));
             }
             catch (JsonException ex)
             {
                 Debug.WriteLine($"Saved game list is invalid ({_filePath}): {ex.Message}");
                 throw new InvalidDataException($"Saved game list is invalid: {_filePath}", ex);
             }
+
         }
+
+        private static bool IsSupportedLaunchUri(string? launchUri) =>
+            Uri.TryCreate(launchUri, UriKind.Absolute, out Uri? uri) &&
+            uri.Scheme is "minecraft" or "roblox" or "roblox-player";
     }
 }

@@ -12,11 +12,11 @@ using System.Reflection;
 
 [assembly: System.Reflection.AssemblyCompanyAttribute("NvidiaCi")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
-[assembly: System.Reflection.AssemblyFileVersionAttribute("3.0.6.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("3.0.6+1af1cab7f8daa8d8a115a14d3bd699f710c7673c")]
+[assembly: System.Reflection.AssemblyFileVersionAttribute("3.0.7.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("3.0.7+07f13dd0efeee518bc0463b49924634a4206d55f")]
 [assembly: System.Reflection.AssemblyProductAttribute("NvidiaCi")]
 [assembly: System.Reflection.AssemblyTitleAttribute("NvidiaCi")]
-[assembly: System.Reflection.AssemblyVersionAttribute("3.0.6.0")]
+[assembly: System.Reflection.AssemblyVersionAttribute("3.0.7.0")]
 [assembly: System.Runtime.Versioning.TargetPlatformAttribute("Windows7.0")]
 [assembly: System.Runtime.Versioning.SupportedOSPlatformAttribute("Windows7.0")]
 

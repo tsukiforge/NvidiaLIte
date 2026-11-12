@@ -8,7 +8,6 @@ namespace NvidiaCi
     public sealed class UserSettings
     {
         public bool DoNotDisturb { get; set; }
-        public string? FfmpegPath { get; set; }
         public string OverlayHotkey { get; set; } = "Z";
         public string ScreenshotHotkey { get; set; } = "F10";
     }
@@ -58,9 +57,5 @@ namespace NvidiaCi
             "NvidiaLite",
             "Screenshots");
 
-        public static string RecordingDirectory => Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),
-            "NvidiaLite",
-            "Recordings");
     }
 }

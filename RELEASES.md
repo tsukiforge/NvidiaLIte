@@ -2,6 +2,13 @@
 
 Semua pembaruan penting untuk project NVIDIA LITE akan dicatat di sini.
 
+## [Unreleased]
+
+- **Overlay:** panel sidebar memakai tema glass hitam-putih; animasi buka/tutup diperhalus, klik di luar panel menutup overlay, dan taskbar auto-hide tetap bisa dipanggil.
+- **Filter:** hapus pilihan warna kustom; preset dan intensitas tetap tersedia.
+- **Library game:** deteksi Minecraft dan Roblox, serta pindai ulang library saat overlay pertama kali dibuka.
+- **Penyederhanaan aplikasi:** hapus fitur perekaman layar dan pengaturan FFmpeg.
+
 ## [v3.0.0] - 2026-11-11
 
 ### ✨ Glass UI dan pengalaman baru

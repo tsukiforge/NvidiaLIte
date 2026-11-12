@@ -3,7 +3,6 @@ using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Windows.Interop;
 using System.Runtime.InteropServices;
-using WpfColor = System.Windows.Media.Color;
 
 namespace NvidiaCi
 {
@@ -82,20 +81,10 @@ namespace NvidiaCi
             }
         }
 
-        /// <summary>
-        /// Apply a custom RGBA tint with given opacity (0-100).
-        /// </summary>
-        public void ApplyCustomTint(WpfColor color, double opacity)
-        {
-            byte alpha = (byte)(Math.Clamp(opacity, 0, 100) / 100.0 * 255);
-            FilterRect.Fill = new SolidColorBrush(WpfColor.FromArgb(alpha, color.R, color.G, color.B));
-            FilterRect.Effect = null;
-        }
-
         private void SetTint(byte alpha, byte red, byte green, byte blue, double scale)
         {
             byte scaledAlpha = (byte)Math.Clamp(Math.Round(alpha * scale), 0, 255);
-            FilterRect.Fill = new SolidColorBrush(WpfColor.FromArgb(scaledAlpha, red, green, blue));
+            FilterRect.Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(scaledAlpha, red, green, blue));
             FilterRect.Effect = null;
         }
     }
