@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Aplikasi Win\\NvidiaLIte\\NvidiaCi.csproj": {}
+    "/workspaces/NvidiaLIte/NvidiaCi.csproj": {}
   },
   "projects": {
-    "C:\\Aplikasi Win\\NvidiaLIte\\NvidiaCi.csproj": {
-      "version": "1.6.0-beta",
+    "/workspaces/NvidiaLIte/NvidiaCi.csproj": {
+      "version": "3.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Aplikasi Win\\NvidiaLIte\\NvidiaCi.csproj",
+        "projectUniqueName": "/workspaces/NvidiaLIte/NvidiaCi.csproj",
         "projectName": "NvidiaCi",
-        "projectPath": "C:\\Aplikasi Win\\NvidiaLIte\\NvidiaCi.csproj",
-        "packagesPath": "C:\\Users\\User\\.nuget\\packages\\",
-        "outputPath": "C:\\Aplikasi Win\\NvidiaLIte\\obj\\",
+        "projectPath": "/workspaces/NvidiaLIte/NvidiaCi.csproj",
+        "packagesPath": "/home/codespace/.nuget/packages/",
+        "outputPath": "/workspaces/NvidiaLIte/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\User\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "/home/codespace/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net9.0-windows"
@@ -23,7 +23,8 @@
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
-          "net9.0-windows7.0": {
+          "net9.0-windows": {
+            "framework": "net9.0-windows7.0",
             "targetAlias": "net9.0-windows",
             "projectReferences": {}
           }
@@ -38,12 +39,19 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "9.0.300"
+        "SdkAnalysisLevel": "10.0.400"
       },
       "frameworks": {
-        "net9.0-windows7.0": {
+        "net9.0-windows": {
+          "framework": "net9.0-windows7.0",
           "targetAlias": "net9.0-windows",
           "dependencies": {
+            "Microsoft.NET.ILLink.Tasks": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[9.0.22, )",
+              "autoReferenced": true
+            },
             "NAudio": {
               "target": "Package",
               "version": "[2.2.1, )"
@@ -64,6 +72,36 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[9.0.22, 9.0.22]"
+            },
+            {
+              "name": "Microsoft.AspNetCore.App.Runtime.win-x64",
+              "version": "[9.0.22, 9.0.22]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Host.win-x64",
+              "version": "[9.0.22, 9.0.22]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[9.0.22, 9.0.22]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Runtime.win-x64",
+              "version": "[9.0.22, 9.0.22]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Ref",
+              "version": "[9.0.22, 9.0.22]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Runtime.win-x64",
+              "version": "[9.0.22, 9.0.22]"
+            }
+          ],
           "frameworkReferences": {
             "Microsoft.NETCore.App": {
               "privateAssets": "all"
@@ -72,7 +110,12 @@
               "privateAssets": "none"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.313/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/10.0.403/PortableRuntimeIdentifierGraph.json"
+        }
+      },
+      "runtimes": {
+        "win-x64": {
+          "#import": []
         }
       }
     }

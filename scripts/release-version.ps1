@@ -199,7 +199,7 @@ if ($DryRun) {
     Write-Host ""
     Write-Host "   Next steps:"                                       -ForegroundColor Gray
     Write-Host "   - Tunggu GitHub Actions selesai build (~2 menit)"  -ForegroundColor Gray
-    Write-Host "   - Cek tab Releases untuk download .zip"            -ForegroundColor Gray
+    Write-Host "   - Cek tab Releases untuk download installer .exe dan ZIP portable" -ForegroundColor Gray
     Write-Host "   - Update RELEASES.md jika belum"                   -ForegroundColor Gray
 }
 Write-Host ""

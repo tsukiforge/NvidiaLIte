@@ -15,7 +15,13 @@ $IssScript        = "$BuildDir\compile.iss"
 $InnoSetup        = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 
 $AppName          = "NvidiaLite"
-$Version          = "1.5"
+$ProjectXml       = [xml](Get-Content $Csproj -Raw)
+$Version          = ($ProjectXml.Project.PropertyGroup |
+    Where-Object { $_.Version } |
+    Select-Object -First 1).Version
+if ([string]::IsNullOrWhiteSpace($Version)) {
+    throw "Version tidak ditemukan di NvidiaCi.csproj"
+}
 
 $InstallerName    = "NvidiaLite_Setup_v$Version.exe"
 $InstallerPath    = "$BuildDir\Output\$InstallerName"
@@ -69,13 +75,14 @@ Info "`n[1/4] Publishing application..."
 try {
     dotnet publish "$Csproj" `
         -c Release `
+        -o "$ProjectRoot\publish\win-x64" `
         -r win-x64 `
         -p:PublishSingleFile=true `
         -p:PublishReadyToRun=true `
         --self-contained true
 
     # Sign main executable
-    $MainExe = "$ProjectRoot\bin\Release\net9.0-windows\win-x64\publish\NvidiaCi.exe"
+    $MainExe = "$ProjectRoot\publish\win-x64\NvidiaCi.exe"
     if (Test-Path $MainExe) {
         Info "Signing main executable..."
         & "$SignTool" sign -pkcs12 "$CertFile" -pass "$CertPassword" -ts "$TimestampServer" -in "$MainExe" -out "$MainExe.signed"
@@ -105,6 +112,7 @@ Info "Using short path for SignTool: $ShortSignBat"
 # Sekarang kita kirim Short Path yang bersih dari spasi
 $InnoArgs = @(
     "/Sstandard=$ShortSignBat `$f",
+    "/DAppVersion=$Version",
     "compile.iss"
 )
 
@@ -124,9 +132,8 @@ Ok "Installer berhasil dikompilasi"
 # ------------------------------------------------------------------------------
 Info "`n[3/4] Signing installer package..."
 
-$Files = Get-ChildItem "$BuildDir\Output\*.exe"
-if ($Files.Count -eq 0) { Fail "Data installer tidak ditemukan di Output" }
-$ActualInstaller = $Files[0].FullName
+if (-not (Test-Path $InstallerPath)) { Fail "Installer tidak ditemukan: $InstallerPath" }
+$ActualInstaller = $InstallerPath
 
 & "$SignTool" sign `
     -pkcs12 "$CertFile" `

@@ -22,7 +22,7 @@ on:
     inputs:
       version:
         description: 'Version to build (e.g., 1.0.0)'
-        required: false
+        required: true
 
 jobs:
   build:
@@ -42,13 +42,26 @@ jobs:
       - name: 🔢 Determine Version
         id: version
         shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            TAG="v${{ github.event.inputs.version }}"
+          if [ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]; then
+            VERSION="$INPUT_VERSION"
+            if [ -z "$VERSION" ]; then
+              echo "::error::Input version is required for a manual release."
+              exit 1
+            fi
+            TAG="v$VERSION"
           else
-            TAG="${{ github.ref_name }}"
+            TAG="$GITHUB_REF_NAME"
+            VERSION="${TAG#v}"
           fi
-          VERSION=${TAG#v}
+
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.]+)?$ ]]; then
+            echo "::error::Invalid version '$VERSION'. Use x.y.z or x.y.z-suffix."
+            exit 1
+          fi
+
           echo "tag=$TAG"         >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "🚀 Building NvidiaLite $TAG"
@@ -78,23 +91,44 @@ jobs:
 
           Write-Host "✅ Publish complete"
 
-      # ─── STEP 3: Buat ZIP artifact ───────────────────────────────────────
-      - name: 📦 Prepare Release Artifacts
+      # ─── STEP 3: Build installer and portable ZIP ─────────────────────────
+      - name: 📦 Build Release Artifacts
         shell: pwsh
         run: |
           $VER = "${{ steps.version.outputs.version }}"
 
-          if (!(Test-Path "publish/win-x64")) {
-            Write-Host "❌ Publish folder not found"
-            exit 1
+          $publishDir = "publish/win-x64"
+          if (!(Test-Path "$publishDir/NvidiaCi.exe")) {
+            throw "Published application not found at $publishDir/NvidiaCi.exe"
           }
 
-          Write-Host "📦 Creating ZIP..."
-          Compress-Archive -Path "publish/win-x64/*" `
+          Write-Host "📦 Creating portable ZIP..."
+          Compress-Archive -Path "$publishDir/*" `
             -DestinationPath "NvidiaLite-v$VER-win-x64.zip" -Force
 
-          $size = [math]::Round((Get-Item "NvidiaLite-v$VER-win-x64.zip").Length / 1MB, 2)
-          Write-Host "✅ NvidiaLite-v$VER-win-x64.zip ($size MB)"
+          Write-Host "📥 Installing Inno Setup..."
+          choco install innosetup --no-progress -y
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) {
+            throw "Inno Setup compiler not found at $iscc"
+          }
+
+          Write-Host "🛠️ Compiling setup installer..."
+          & $iscc "/DAppVersion=$VER" "build/compile.iss"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Inno Setup compilation failed with exit code $LASTEXITCODE"
+          }
+
+          $installer = "build/Output/NvidiaLite_Setup_v$VER.exe"
+          if (!(Test-Path $installer)) {
+            throw "Installer was not created: $installer"
+          }
+
+          Get-Item "NvidiaLite-v$VER-win-x64.zip", $installer |
+            ForEach-Object {
+              $size = [math]::Round($_.Length / 1MB, 2)
+              Write-Host "✅ $($_.Name) ($size MB)"
+            }
 
       # ─── STEP 4: Generate release notes dari RELEASES.md ─────────────────
       - name: 📋 Extract Release Notes
@@ -130,10 +164,12 @@ jobs:
           $body += "### 📥 Downloads`n"
           $body += "| File | Keterangan |`n"
           $body += "|------|------------|`n"
-          $body += "| \`\`NvidiaLite-v$VER-win-x64.zip\`\` | Portable — extract & run langsung |`n`n"
+          $body += "| ``NvidiaLite_Setup_v$VER.exe`` | Installer Windows — jalankan untuk memasang |`n"
+          $body += "| ``NvidiaLite-v$VER-win-x64.zip`` | Portable — extract & run langsung |`n`n"
           $body += "### 🖥️ Requirements`n"
           $body += "- Windows 10/11 x64`n"
-          $body += "- .NET 9 runtime sudah dibundle (tidak perlu install)"
+          $body += "- .NET 9 runtime sudah dibundle (tidak perlu install)`n"
+          $body += "- Installer belum ditandatangani secara digital"
 
           $body | Out-File -FilePath "RELEASE_NOTES.md" -Encoding utf8
           Write-Host "✅ Release notes generated"
@@ -158,7 +194,8 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           files: |
+            build/Output/NvidiaLite_Setup_v${{ steps.version.outputs.version }}.exe
             NvidiaLite-v${{ steps.version.outputs.version }}-win-x64.zip
-          fail_on_unmatched_files: false
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
