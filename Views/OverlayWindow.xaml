@@ -79,12 +79,6 @@
         </Style>
     </Window.Resources>
 
-    <Window.Triggers>
-        <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-            <BeginStoryboard Storyboard="{StaticResource ShowSidebar}"/>
-        </EventTrigger>
-    </Window.Triggers>
-
     <!-- Main Root Grid -->
     <Grid x:Name="MainRootGrid">
         <!-- Full Screen Semi-Transparent Background (Glass effect like Game Bar) -->

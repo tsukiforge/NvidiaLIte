@@ -28,7 +28,6 @@ Tetap gratis
 - Pengaturan dasar yang sudah tersedia, termasuk hotkey dan filter dasar.
 - Jangan mengunci data pengguna atau fitur dasar di balik pembayaran.
 
-Catatan sebelum dijual
 - Harga Rp10.000 adalah usulan; tentukan apakah pembayaran berlaku per
   perangkat atau untuk penggunaan pribadi sebelum implementasi.
 - Jangan tampilkan tombol beli atau mengklaim fitur sudah tersedia sebelum

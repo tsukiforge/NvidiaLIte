@@ -593,13 +593,13 @@
     "C:\\Users\\User\\.nuget\\packages\\": {}
   },
   "project": {
-    "version": "1.6.0-beta",
+    "version": "3.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Aplikasi Win\\NvidiaLIte\\NvidiaCi.csproj",
+      "projectUniqueName": "C:\\ZeroMix\\NvidiaLIte\\NvidiaCi.csproj",
       "projectName": "NvidiaCi",
-      "projectPath": "C:\\Aplikasi Win\\NvidiaLIte\\NvidiaCi.csproj",
+      "projectPath": "C:\\ZeroMix\\NvidiaLIte\\NvidiaCi.csproj",
       "packagesPath": "C:\\Users\\User\\.nuget\\packages\\",
-      "outputPath": "C:\\Aplikasi Win\\NvidiaLIte\\obj\\",
+      "outputPath": "C:\\ZeroMix\\NvidiaLIte\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\User\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -660,7 +660,7 @@
             "privateAssets": "none"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.313/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.321/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

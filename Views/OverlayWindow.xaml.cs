@@ -29,6 +29,8 @@ namespace NvidiaCi
         private bool _isSyncingControls;
         private bool _isCustomTint;
         private bool _isCapturing;
+        private int _visibilityTransitionVersion;
+        private System.Windows.Media.Animation.Storyboard? _activeVisibilityStoryboard;
         private System.Windows.Input.Key _tempOverlayKey = System.Windows.Input.Key.Z;
         private System.Windows.Input.Key _tempScreenshotKey = System.Windows.Input.Key.F10;
 
@@ -67,12 +69,14 @@ namespace NvidiaCi
 
         public Task ShowAnimated()
         {
+            _visibilityTransitionVersion++;
+            StopVisibilityTransition();
             PositionWindow();
             this.Visibility = Visibility.Visible;
             this.Opacity = 1;
 
-            var sb = (Storyboard)this.Resources["ShowSidebar"];
-            sb.Begin();
+            _activeVisibilityStoryboard = (Storyboard)this.Resources["ShowSidebar"];
+            _activeVisibilityStoryboard.Begin(this, HandoffBehavior.SnapshotAndReplace, true);
 
             this.Activate();
             this.Topmost = false;
@@ -84,11 +88,20 @@ namespace NvidiaCi
 
         public async Task HideAnimated()
         {
-            var sb = (Storyboard)this.Resources["HideSidebar"];
-            sb.Begin();
+            int transitionVersion = ++_visibilityTransitionVersion;
+            StopVisibilityTransition();
+            _activeVisibilityStoryboard = (Storyboard)this.Resources["HideSidebar"];
+            _activeVisibilityStoryboard.Begin(this, HandoffBehavior.SnapshotAndReplace, true);
 
             await Task.Delay(350);
-            this.Visibility = Visibility.Collapsed;
+            if (transitionVersion == _visibilityTransitionVersion)
+                this.Visibility = Visibility.Collapsed;
+        }
+
+        private void StopVisibilityTransition()
+        {
+            _activeVisibilityStoryboard?.Stop(this);
+            _activeVisibilityStoryboard = null;
         }
 
         private async void OnLoaded(object sender, RoutedEventArgs e)

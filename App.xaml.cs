@@ -71,7 +71,11 @@ namespace NvidiaCi
             _notifyIcon.Visible = true;
 
             ShowWelcomeNotification();
-            _notifyIcon.DoubleClick += (s, args) => ToggleOverlay();
+            _notifyIcon.MouseClick += (s, args) =>
+            {
+                if (args.Button == MouseButtons.Left)
+                    ShowOverlay();
+            };
 
             var contextMenu = new ContextMenuStrip();
             _overlayMenuItem = new ToolStripMenuItem();
@@ -182,6 +186,12 @@ namespace NvidiaCi
             {
                 await _overlayWindow.ShowAnimated();
             }
+        }
+
+        private void ShowOverlay()
+        {
+            if (_overlayWindow != null)
+                _ = _overlayWindow.ShowAnimated();
         }
 
         protected override void OnExit(ExitEventArgs e)
